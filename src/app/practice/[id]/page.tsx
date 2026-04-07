@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { textToSpeech } from '@/lib/minimax';
 import { SCORING_CONFIG, DialogNode, NODE_ORDER } from '@/types';
 
 interface Message {
@@ -9,6 +11,7 @@ interface Message {
   role: 'ai' | 'sales';
   content: string;
   node: DialogNode;
+  audioUrl?: string;
 }
 
 interface NodeScore {
@@ -26,6 +29,7 @@ interface Session {
   customerSubject: string;
   currentNode: DialogNode;
   aiOpeningMessage: string;
+  aiOpeningAudio?: string;
 }
 
 export default function PracticeSessionPage({
@@ -43,7 +47,12 @@ export default function PracticeSessionPage({
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [scores, setScores] = useState<NodeScore[]>([]);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const voice = useVoiceRecording();
 
   useEffect(() => {
     params.then(p => setSessionId(p.id));
@@ -65,18 +74,30 @@ export default function PracticeSessionPage({
             customerScore: data.session.customerScore,
             customerSubject: data.session.customerSubject,
             currentNode: data.session.currentNode,
-            aiOpeningMessage: '',
+            aiOpeningMessage: data.session.aiOpeningMessage || '',
+            aiOpeningAudio: data.session.aiOpeningAudio,
           });
           setCurrentNode(data.session.currentNode);
           
-          // 添加开场白
           if (data.session.aiOpeningMessage) {
-            setMessages([{
+            const audioUrl = data.session.aiOpeningAudio;
+            
+            const openingMsg: Message = {
               id: '1',
               role: 'ai',
               content: data.session.aiOpeningMessage,
               node: '开场',
-            }]);
+              audioUrl: audioUrl || undefined,
+            };
+            setMessages([openingMsg]);
+            
+            // 自动播放开场白
+            if (audioUrl) {
+              const audio = new Audio(audioUrl);
+              audio.onplay = () => setAiSpeaking(true);
+              audio.onended = () => setAiSpeaking(false);
+              audio.play();
+            }
           }
         }
       } catch (error) {
@@ -85,45 +106,66 @@ export default function PracticeSessionPage({
     };
 
     initSession();
-  }, [sessionId]);
+  }, [sessionId, isVoiceMode]);
 
-  // 自动滚动到最新消息
+  // 自动滚动
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading || !sessionId) return;
+  const handleSend = async (textToSend?: string) => {
+    const text = textToSend || inputText;
+    if (!text.trim() || isLoading || !sessionId) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'sales',
-      content: inputText,
+      content: text,
       node: currentNode,
     };
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsLoading(true);
     setNodeScore(null);
+    voice.stopPlaying();
+    voice.stopRecording();
 
     try {
       const res = await fetch(`/api/sessions/${sessionId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText, node: currentNode }),
+        body: JSON.stringify({ text, node: currentNode }),
       });
 
       const data = await res.json();
 
       if (data.aiMessage) {
+        let audioUrl: string | undefined;
+        
+        // 语音模式下生成TTS
+        if (isVoiceMode) {
+          setAiSpeaking(true);
+          audioUrl = await textToSpeech(data.aiMessage) || undefined;
+          setAiSpeaking(false);
+        }
+        
         const aiMessage: Message = {
-          id: data.aiMessageId,
+          id: data.aiMessageId || (Date.now() + 1).toString(),
           role: 'ai',
           content: data.aiMessage,
           node: data.nextNode as DialogNode,
+          audioUrl,
         };
         setMessages(prev => [...prev, aiMessage]);
         setCurrentNode(data.nextNode as DialogNode);
+        
+        // 自动播放AI回复
+        if (isVoiceMode && audioUrl) {
+          const audio = new Audio(audioUrl);
+          audio.onplay = () => setAiSpeaking(true);
+          audio.onended = () => setAiSpeaking(false);
+          audio.play();
+        }
       }
 
       if (data.nodeScore) {
@@ -147,8 +189,91 @@ export default function PracticeSessionPage({
     }
   };
 
+  // 语音录制结束处理
+  const handleRecordingComplete = async () => {
+    const blob = await voice.stopRecording();
+    if (blob && sessionId) {
+      // 语音转文字 - 简单处理，使用Web Speech API
+      const text = await transcribeAudio(blob);
+      if (text) {
+        await handleSend(text);
+      }
+    }
+  };
+
+  // 使用Web Speech API进行语音识别
+  const transcribeAudio = async (blob: Blob): Promise<string> => {
+    return new Promise((resolve) => {
+      // 简单的语音识别，使用浏览器原生API
+      const recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      
+      if (!recognition) {
+        console.warn('浏览器不支持语音识别');
+        resolve('');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+        // 创建音频元素用于验证
+        const audio = new Audio(reader.result as string);
+        audio.onloadedmetadata = () => {
+          // 提示用户开始说话
+          console.log('准备语音识别...');
+        };
+      };
+      reader.readAsDataURL(blob);
+      
+      // 使用语音识别
+      const recognizer = new recognition();
+      recognizer.continuous = false;
+      recognizer.interimResults = false;
+      recognizer.lang = 'zh-CN';
+      
+      recognizer.onresult = (event: any) => {
+        const text = event.results[0][0].transcript;
+        resolve(text);
+      };
+      
+      recognizer.onerror = (event: any) => {
+        console.error('语音识别错误:', event.error);
+        resolve('');
+      };
+      
+      recognizer.start();
+      
+      // 设置超时
+      setTimeout(() => {
+        recognizer.stop();
+      }, 10000);
+    });
+  };
+
+  // 处理语音按钮点击
+  const handleVoiceButton = async () => {
+    if (voice.isRecording) {
+      await handleRecordingComplete();
+    } else {
+      await voice.startRecording();
+    }
+  };
+
+  // 播放AI语音
+  const handlePlayAudio = (msgId: string, audioUrl: string) => {
+    if (playingAudioId === msgId && voice.isPlaying) {
+      voice.stopPlaying();
+      setPlayingAudioId(null);
+    } else {
+      voice.stopPlaying();
+      voice.playAudio(audioUrl);
+      setPlayingAudioId(msgId);
+    }
+  };
+
   const handleEnd = async () => {
     if (!sessionId) return;
+    voice.stopPlaying();
+    voice.stopRecording();
     
     try {
       await fetch(`/api/sessions/${sessionId}/end`, { method: 'POST' });
@@ -156,6 +281,12 @@ export default function PracticeSessionPage({
     } catch (error) {
       console.error('结束会话失败:', error);
     }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const currentNodeIndex = NODE_ORDER.indexOf(currentNode);
@@ -173,12 +304,25 @@ export default function PracticeSessionPage({
             </h2>
             <p className="text-gray-500 text-sm">当前节点：{currentNode}</p>
           </div>
-          <button
-            onClick={handleEnd}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-          >
-            结束演练
-          </button>
+          <div className="flex items-center gap-3">
+            {/* 语音模式切换 */}
+            <button
+              onClick={() => setIsVoiceMode(!isVoiceMode)}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                isVoiceMode 
+                  ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {isVoiceMode ? '🔊' : '🎤'} {isVoiceMode ? '语音模式' : '文字模式'}
+            </button>
+            <button
+              onClick={handleEnd}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            >
+              结束演练
+            </button>
+          </div>
         </div>
 
         {/* 进度条 */}
@@ -208,8 +352,20 @@ export default function PracticeSessionPage({
                     : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
                 }`}
               >
-                <div className="text-sm opacity-70 mb-1">
-                  {msg.role === 'sales' ? '你' : 'AI家长'}
+                <div className="text-sm opacity-70 mb-1 flex items-center gap-2">
+                  <span>{msg.role === 'sales' ? '你' : 'AI家长'}</span>
+                  {msg.role === 'ai' && msg.audioUrl && isVoiceMode && (
+                    <button
+                      onClick={() => handlePlayAudio(msg.id, msg.audioUrl!)}
+                      className={`px-2 py-0.5 rounded text-xs ${
+                        playingAudioId === msg.id 
+                          ? 'bg-blue-100 text-blue-600' 
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {playingAudioId === msg.id && voice.isPlaying ? '⏸ 暂停' : '▶ 播放'}
+                    </button>
+                  )}
                 </div>
                 <div>{msg.content}</div>
               </div>
@@ -227,30 +383,83 @@ export default function PracticeSessionPage({
               </div>
             </div>
           )}
+
+          {aiSpeaking && (
+            <div className="flex justify-start">
+              <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-600 text-sm flex items-center gap-2">
+                <span className="animate-pulse">🔊</span>
+                AI正在说话...
+              </div>
+            </div>
+          )}
           
           <div ref={messagesEndRef} />
         </div>
 
+        {/* 错误提示 */}
+        {voice.error && (
+          <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {voice.error}
+          </div>
+        )}
+
         {/* 输入区域 */}
         <div className="bg-white border-t p-4">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder="输入你的回复..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isLoading || isFinished}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputText.trim() || isLoading || isFinished}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              发送
-            </button>
-          </div>
+          {isVoiceMode ? (
+            /* 语音模式 */
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleVoiceButton}
+                  disabled={isLoading || isFinished}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl transition-all ${
+                    voice.isRecording
+                      ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  } ${isLoading || isFinished ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {voice.isRecording ? '⏹' : '🎤'}
+                </button>
+              </div>
+              
+              {voice.isRecording && (
+                <div className="text-center">
+                  <div className="text-red-500 font-medium animate-pulse">
+                    录音中... {formatDuration(voice.duration)}
+                  </div>
+                  <div className="text-gray-500 text-sm mt-1">
+                    请说话，然后点击停止
+                  </div>
+                </div>
+              )}
+              
+              {!voice.isRecording && !isLoading && (
+                <div className="text-gray-500 text-sm">
+                  点击麦克风开始说话
+                </div>
+              )}
+            </div>
+          ) : (
+            /* 文字模式 */
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={inputText}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder="输入你的回复..."
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading || isFinished}
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={!inputText.trim() || isLoading || isFinished}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                发送
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSession, getSession, getSessionList } from '@/lib/store';
 import { CUSTOMER_TYPE_CONFIG } from '@/types';
+import { textToSpeech } from '@/lib/minimax';
 
 // 创建演练会话
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { salespersonId, customerType, customerScore, customerSubject } = body;
+    const { salespersonId, customerType, customerScore, customerSubject, voiceMode } = body;
 
     if (!customerType || !customerScore || !customerSubject) {
       return NextResponse.json(
@@ -31,12 +32,24 @@ export async function POST(request: NextRequest) {
     };
 
     const aiMessage = openingMessages[customerType as keyof typeof openingMessages] || '您好，请问您是...？';
+    
+    // 语音模式下生成TTS
+    let aiOpeningAudio = '';
+    if (voiceMode) {
+      try {
+        aiOpeningAudio = await textToSpeech(aiMessage) || '';
+      } catch (e) {
+        console.error('TTS生成失败:', e);
+      }
+    }
 
     return NextResponse.json({
       sessionId: session.id,
       status: session.status,
       customerType: config.name,
+      customerTypeKey: customerType,
       aiOpeningMessage: aiMessage,
+      aiOpeningAudio,
       currentNode: session.currentNode,
     });
   } catch (error) {

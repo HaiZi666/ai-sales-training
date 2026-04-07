@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { CUSTOMER_TYPE_CONFIG, CustomerType } from '@/types';
 
 const CUSTOMER_TYPES: CustomerType[] = ['type_a', 'type_b', 'type_c'];
@@ -11,6 +12,7 @@ export default function NewPracticePage() {
   const [customerType, setCustomerType] = useState<CustomerType | null>(null);
   const [customerScore, setCustomerScore] = useState<string>('');
   const [customerSubject, setCustomerSubject] = useState<string>('');
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleStart = async () => {
@@ -29,6 +31,7 @@ export default function NewPracticePage() {
           customerType,
           customerScore,
           customerSubject,
+          voiceMode: isVoiceMode,
         }),
       });
       
@@ -47,8 +50,46 @@ export default function NewPracticePage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* 顶部导航 */}
+        <div className="flex items-center gap-4 mb-8">
+          <Link href="/" className="text-gray-500 hover:text-gray-700">
+            ← 返回
+          </Link>
+        </div>
+
         <h1 className="text-3xl font-bold text-gray-900 mb-2">新建演练</h1>
-        <p className="text-gray-600 mb-8">选择客户类型，开始AI陪练</p>
+        <p className="text-gray-600 mb-8">选择配置，开始AI陪练</p>
+
+        {/* 模式选择 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">0. 选择演练模式</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setIsVoiceMode(false)}
+              className={`p-4 rounded-lg border-2 text-center transition-all ${
+                !isVoiceMode
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="text-2xl mb-2">💬</div>
+              <div className="font-medium">文字模式</div>
+              <div className="text-gray-500 text-sm mt-1">输入文字进行对话</div>
+            </button>
+            <button
+              onClick={() => setIsVoiceMode(true)}
+              className={`p-4 rounded-lg border-2 text-center transition-all ${
+                isVoiceMode
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="text-2xl mb-2">🎤</div>
+              <div className="font-medium">语音模式</div>
+              <div className="text-gray-500 text-sm mt-1">语音对话，AI语音回复</div>
+            </button>
+          </div>
+        </div>
 
         {/* 客户类型选择 */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -127,6 +168,16 @@ export default function NewPracticePage() {
         >
           {isCreating ? '创建中...' : '开始演练'}
         </button>
+
+        {/* 提示信息 */}
+        <div className="mt-6 text-center text-gray-500 text-sm">
+          {isVoiceMode && (
+            <p className="text-blue-600">🎤 语音模式已开启，AI将以语音回复</p>
+          )}
+          {!isVoiceMode && (
+            <p>💬 文字模式，输入文字与AI对话</p>
+          )}
+        </div>
       </div>
     </div>
   );
