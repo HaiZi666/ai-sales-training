@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { textToSpeech } from '@/lib/minimax';
 import { SCORING_CONFIG, DialogNode, NODE_ORDER } from '@/types';
@@ -50,8 +51,10 @@ export default function PracticeSessionPage({
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [aiSpeaking, setAiSpeaking] = useState(false);
+  const [showScorePanel, setShowScorePanel] = useState(false); // 移动端评分面板
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const voice = useVoiceRecording();
 
   useEffect(() => {
@@ -66,7 +69,7 @@ export default function PracticeSessionPage({
       try {
         const res = await fetch(`/api/sessions/${sessionId}`);
         const data = await res.json();
-        
+
         if (data.session) {
           setSession({
             id: data.session.id,
@@ -78,10 +81,10 @@ export default function PracticeSessionPage({
             aiOpeningAudio: data.session.aiOpeningAudio,
           });
           setCurrentNode(data.session.currentNode);
-          
+
           if (data.session.aiOpeningMessage) {
             const audioUrl = data.session.aiOpeningAudio;
-            
+
             const openingMsg: Message = {
               id: '1',
               role: 'ai',
@@ -90,7 +93,7 @@ export default function PracticeSessionPage({
               audioUrl: audioUrl || undefined,
             };
             setMessages([openingMsg]);
-            
+
             // 自动播放开场白
             if (audioUrl) {
               const audio = new Audio(audioUrl);
@@ -141,14 +144,14 @@ export default function PracticeSessionPage({
 
       if (data.aiMessage) {
         let audioUrl: string | undefined;
-        
+
         // 语音模式下生成TTS
         if (isVoiceMode) {
           setAiSpeaking(true);
           audioUrl = await textToSpeech(data.aiMessage) || undefined;
           setAiSpeaking(false);
         }
-        
+
         const aiMessage: Message = {
           id: data.aiMessageId || (Date.now() + 1).toString(),
           role: 'ai',
@@ -158,7 +161,7 @@ export default function PracticeSessionPage({
         };
         setMessages(prev => [...prev, aiMessage]);
         setCurrentNode(data.nextNode as DialogNode);
-        
+
         // 自动播放AI回复
         if (isVoiceMode && audioUrl) {
           const audio = new Audio(audioUrl);
@@ -193,7 +196,6 @@ export default function PracticeSessionPage({
   const handleRecordingComplete = async () => {
     const blob = await voice.stopRecording();
     if (blob && sessionId) {
-      // 语音转文字 - 简单处理，使用Web Speech API
       const text = await transcribeAudio(blob);
       if (text) {
         await handleSend(text);
@@ -204,45 +206,40 @@ export default function PracticeSessionPage({
   // 使用Web Speech API进行语音识别
   const transcribeAudio = async (blob: Blob): Promise<string> => {
     return new Promise((resolve) => {
-      // 简单的语音识别，使用浏览器原生API
       const recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      
+
       if (!recognition) {
         console.warn('浏览器不支持语音识别');
         resolve('');
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onload = () => {
-        // 创建音频元素用于验证
         const audio = new Audio(reader.result as string);
         audio.onloadedmetadata = () => {
-          // 提示用户开始说话
           console.log('准备语音识别...');
         };
       };
       reader.readAsDataURL(blob);
-      
-      // 使用语音识别
+
       const recognizer = new recognition();
       recognizer.continuous = false;
       recognizer.interimResults = false;
       recognizer.lang = 'zh-CN';
-      
+
       recognizer.onresult = (event: any) => {
         const text = event.results[0][0].transcript;
         resolve(text);
       };
-      
+
       recognizer.onerror = (event: any) => {
         console.error('语音识别错误:', event.error);
         resolve('');
       };
-      
+
       recognizer.start();
-      
-      // 设置超时
+
       setTimeout(() => {
         recognizer.stop();
       }, 10000);
@@ -274,7 +271,7 @@ export default function PracticeSessionPage({
     if (!sessionId) return;
     voice.stopPlaying();
     voice.stopRecording();
-    
+
     try {
       await fetch(`/api/sessions/${sessionId}/end`, { method: 'POST' });
       router.push(`/practice/${sessionId}/report`);
@@ -292,256 +289,293 @@ export default function PracticeSessionPage({
   const currentNodeIndex = NODE_ORDER.indexOf(currentNode);
   const progress = ((currentNodeIndex + 1) / NODE_ORDER.length) * 100;
 
+  // ========== 移动端布局 ==========
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* 左侧：对话区域 */}
-      <div className="flex-1 flex flex-col">
-        {/* 顶部栏 */}
-        <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+    <div className="flex flex-col h-screen bg-gray-100 safe-area-top">
+      {/* 顶部栏 - 移动端优化 */}
+      <div className="bg-white border-b px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/practice/new"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            <span className="text-gray-600 text-xl">←</span>
+          </Link>
           <div>
-            <h2 className="font-semibold text-lg">
-              {session?.customerType} · {session?.customerScore} · {session?.customerSubject}
+            <h2 className="font-semibold text-base">
+              {session?.customerType} · {session?.customerScore}
             </h2>
-            <p className="text-gray-500 text-sm">当前节点：{currentNode}</p>
+            <p className="text-gray-500 text-xs">当前：{currentNode}</p>
           </div>
-          <div className="flex items-center gap-3">
-            {/* 语音模式切换 */}
-            <button
-              onClick={() => setIsVoiceMode(!isVoiceMode)}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                isVoiceMode 
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-                  : 'bg-gray-100 text-gray-600'
+        </div>
+        <div className="flex items-center gap-2">
+          {/* 语音模式切换 */}
+          <button
+            onClick={() => setIsVoiceMode(!isVoiceMode)}
+            className={`px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm transition-colors ${
+              isVoiceMode
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {isVoiceMode ? '🔊' : '🎤'}
+          </button>
+          {/* 评分面板切换（移动端） */}
+          <button
+            onClick={() => setShowScorePanel(!showScorePanel)}
+            className={`px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm transition-colors ${
+              showScorePanel
+                ? 'bg-orange-100 text-orange-700'
+                : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            📊
+          </button>
+          <button
+            onClick={handleEnd}
+            className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg active:bg-red-600"
+          >
+            结束
+          </button>
+        </div>
+      </div>
+
+      {/* 进度条 */}
+      <div className="bg-white px-4 py-2 border-b shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+            <div
+              className="bg-blue-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 shrink-0">{Math.round(progress)}%</span>
+        </div>
+      </div>
+
+      {/* 主内容区 - 消息列表 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 hide-scrollbar">
+        {messages.map(msg => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.role === 'sales' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[85%] px-4 py-2.5 rounded-2xl ${
+                msg.role === 'sales'
+                  ? 'bg-blue-500 text-white rounded-br-sm'
+                  : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
               }`}
             >
-              {isVoiceMode ? '🔊' : '🎤'} {isVoiceMode ? '语音模式' : '文字模式'}
-            </button>
-            <button
-              onClick={handleEnd}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-            >
-              结束演练
-            </button>
+              <div className="text-xs opacity-70 mb-1 flex items-center gap-2">
+                <span>{msg.role === 'sales' ? '你' : 'AI'}</span>
+                {msg.role === 'ai' && msg.audioUrl && isVoiceMode && (
+                  <button
+                    onClick={() => handlePlayAudio(msg.id, msg.audioUrl!)}
+                    className={`px-2 py-0.5 rounded text-xs ${
+                      playingAudioId === msg.id
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {playingAudioId === msg.id && voice.isPlaying ? '⏸' : '▶'}
+                  </button>
+                )}
+              </div>
+              <div className="text-sm leading-relaxed">{msg.content}</div>
+            </div>
           </div>
-        </div>
+        ))}
 
-        {/* 进度条 */}
-        <div className="bg-white px-6 py-2 border-b">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-500 h-2 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="text-sm text-gray-500">{Math.round(progress)}%</span>
-          </div>
-        </div>
-
-        {/* 消息列表 */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'sales' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xl px-4 py-3 rounded-2xl ${
-                  msg.role === 'sales'
-                    ? 'bg-blue-500 text-white rounded-br-sm'
-                    : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
-                }`}
-              >
-                <div className="text-sm opacity-70 mb-1 flex items-center gap-2">
-                  <span>{msg.role === 'sales' ? '你' : 'AI家长'}</span>
-                  {msg.role === 'ai' && msg.audioUrl && isVoiceMode && (
-                    <button
-                      onClick={() => handlePlayAudio(msg.id, msg.audioUrl!)}
-                      className={`px-2 py-0.5 rounded text-xs ${
-                        playingAudioId === msg.id 
-                          ? 'bg-blue-100 text-blue-600' 
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {playingAudioId === msg.id && voice.isPlaying ? '⏸ 暂停' : '▶ 播放'}
-                    </button>
-                  )}
-                </div>
-                <div>{msg.content}</div>
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
               </div>
             </div>
-          ))}
-          
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {aiSpeaking && (
-            <div className="flex justify-start">
-              <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-600 text-sm flex items-center gap-2">
-                <span className="animate-pulse">🔊</span>
-                AI正在说话...
-              </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* 错误提示 */}
-        {voice.error && (
-          <div className="mx-6 mb-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-            {voice.error}
           </div>
         )}
 
-        {/* 输入区域 */}
-        <div className="bg-white border-t p-4">
-          {isVoiceMode ? (
-            /* 语音模式 */
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleVoiceButton}
-                  disabled={isLoading || isFinished}
-                  className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl transition-all ${
-                    voice.isRecording
-                      ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-200'
-                      : 'bg-blue-500 text-white hover:bg-blue-600'
-                  } ${isLoading || isFinished ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {voice.isRecording ? '⏹' : '🎤'}
-                </button>
-              </div>
-              
-              {voice.isRecording && (
-                <div className="text-center">
-                  <div className="text-red-500 font-medium animate-pulse">
-                    录音中... {formatDuration(voice.duration)}
-                  </div>
-                  <div className="text-gray-500 text-sm mt-1">
-                    请说话，然后点击停止
-                  </div>
-                </div>
-              )}
-              
-              {!voice.isRecording && !isLoading && (
-                <div className="text-gray-500 text-sm">
-                  点击麦克风开始说话
-                </div>
-              )}
+        {aiSpeaking && (
+          <div className="flex justify-start">
+            <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-600 text-sm flex items-center gap-2">
+              <span className="animate-pulse">🔊</span>
+              AI正在说话...
             </div>
-          ) : (
-            /* 文字模式 */
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder="输入你的回复..."
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isLoading || isFinished}
-              />
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* 错误提示 */}
+      {voice.error && (
+        <div className="mx-4 mb-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          {voice.error}
+        </div>
+      )}
+
+      {/* 输入区域 - 固定底部 */}
+      <div className="bg-white border-t p-4 safe-area-bottom shrink-0">
+        {isVoiceMode ? (
+          /* 语音模式 */
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
-                onClick={() => handleSend()}
-                disabled={!inputText.trim() || isLoading || isFinished}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                onClick={handleVoiceButton}
+                disabled={isLoading || isFinished}
+                className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all active:scale-95 ${
+                  voice.isRecording
+                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200'
+                    : 'bg-blue-500 text-white active:bg-blue-600'
+                } ${isLoading || isFinished ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                发送
+                {voice.isRecording ? '⏹' : '🎤'}
               </button>
             </div>
-          )}
-        </div>
+
+            {voice.isRecording && (
+              <div className="text-center">
+                <div className="text-red-500 font-medium animate-pulse text-sm">
+                  录音中... {formatDuration(voice.duration)}
+                </div>
+                <div className="text-gray-500 text-xs mt-1">
+                  点击停止发送
+                </div>
+              </div>
+            )}
+
+            {!voice.isRecording && !isLoading && (
+              <div className="text-gray-500 text-sm">
+                点击麦克风开始说话
+              </div>
+            )}
+          </div>
+        ) : (
+          /* 文字模式 */
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="输入你的回复..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+              disabled={isLoading || isFinished}
+            />
+            <button
+              onClick={() => handleSend()}
+              disabled={!inputText.trim() || isLoading || isFinished}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium active:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              发送
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 右侧：评分面板 */}
-      <div className="w-80 bg-white border-l overflow-y-auto">
-        <div className="p-6">
-          <h3 className="font-semibold text-lg mb-4">实时评分</h3>
-          
-          {/* 当前节点 */}
-          <div className="mb-6">
-            <div className="text-sm text-gray-500 mb-2">当前节点</div>
-            <div className="flex flex-wrap gap-2">
-              {NODE_ORDER.map((node, i) => (
-                <div
-                  key={node}
-                  className={`px-3 py-1 rounded-full text-sm ${
-                    i <= currentNodeIndex
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-gray-100 text-gray-500'
-                  }`}
-                >
-                  {node}
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* 移动端评分面板 - 底部弹出 */}
+      {showScorePanel && (
+        <>
+          {/* 遮罩层 */}
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setShowScorePanel(false)}
+          />
 
-          {/* 本轮评分 */}
-          {nodeScore && (
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">{nodeScore.node}</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {nodeScore.score}/{nodeScore.maxScore}
-                </span>
+          {/* 面板内容 */}
+          <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl z-50 max-h-[70vh] overflow-y-auto safe-area-bottom">
+            <div className="sticky top-0 bg-white px-4 py-3 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-lg">实时评分</h3>
+              <button
+                onClick={() => setShowScorePanel(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4">
+              {/* 当前节点 */}
+              <div className="mb-4">
+                <div className="text-sm text-gray-500 mb-2">当前节点</div>
+                <div className="flex flex-wrap gap-2">
+                  {NODE_ORDER.map((node, i) => (
+                    <div
+                      key={node}
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        i <= currentNodeIndex
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {node}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <p className="text-sm text-gray-600 mb-2">{nodeScore.feedback}</p>
-              {nodeScore.suggestions.length > 0 && (
-                <div className="mt-3">
-                  <div className="text-xs text-gray-500 mb-1">改进建议：</div>
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    {nodeScore.suggestions.map((s, i) => (
-                      <li key={i}>• {s}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* 评分维度 */}
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-700">评分维度</div>
-            {NODE_ORDER.map(node => {
-              const config = SCORING_CONFIG[node];
-              const nodeScores = scores.filter(s => s.node === node);
-              const latestScore = nodeScores[nodeScores.length - 1];
-              
-              return (
-                <div key={node} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">{node}</span>
-                    <span className="text-sm text-gray-500">
-                      {latestScore ? `${latestScore.score}/` : '0/'}{config.maxScore}
+              {/* 本轮评分 */}
+              {nodeScore && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{nodeScore.node}</span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {nodeScore.score}/{nodeScore.maxScore}
                     </span>
                   </div>
-                  <div className="bg-gray-200 rounded-full h-1.5">
-                    <div
-                      className="bg-blue-500 h-1.5 rounded-full transition-all"
-                      style={{
-                        width: latestScore
-                          ? `${(latestScore.score / config.maxScore) * 100}%`
-                          : '0%',
-                      }}
-                    />
-                  </div>
+                  <p className="text-sm text-gray-600 mb-2">{nodeScore.feedback}</p>
+                  {nodeScore.suggestions.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-xs text-gray-500 mb-1">改进建议：</div>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {nodeScore.suggestions.map((s, i) => (
+                          <li key={i}>• {s}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
+              )}
+
+              {/* 评分维度 */}
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-gray-700">评分维度</div>
+                {NODE_ORDER.map(node => {
+                  const config = SCORING_CONFIG[node];
+                  const nodeScores = scores.filter(s => s.node === node);
+                  const latestScore = nodeScores[nodeScores.length - 1];
+
+                  return (
+                    <div key={node} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{node}</span>
+                        <span className="text-sm text-gray-500">
+                          {latestScore ? `${latestScore.score}/` : '0/'}{config.maxScore}
+                        </span>
+                      </div>
+                      <div className="bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-500 h-1.5 rounded-full transition-all"
+                          style={{
+                            width: latestScore
+                              ? `${(latestScore.score / config.maxScore) * 100}%`
+                              : '0%',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

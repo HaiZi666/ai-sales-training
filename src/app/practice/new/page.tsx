@@ -48,7 +48,7 @@ export default function NewPracticePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
       <div className="max-w-2xl mx-auto">
         {/* 顶部导航 */}
         <div className="flex items-center gap-4 mb-8">
@@ -177,6 +177,24 @@ export default function NewPracticePage() {
           {!isVoiceMode && (
             <p>💬 文字模式，输入文字与AI对话</p>
           )}
+        </div>
+      </div>
+
+      {/* 移动端底部导航 */}
+      <div className="mobile-nav">
+        <div className="flex justify-around py-3">
+          <Link href="/" className="flex flex-col items-center gap-1 text-gray-500">
+            <span className="text-xl">🏠</span>
+            <span className="text-xs">首页</span>
+          </Link>
+          <Link href="/practice/new" className="flex flex-col items-center gap-1 text-blue-600">
+            <span className="text-xl">🎯</span>
+            <span className="text-xs">新建</span>
+          </Link>
+          <Link href="/history" className="flex flex-col items-center gap-1 text-gray-500">
+            <span className="text-xl">📝</span>
+            <span className="text-xs">历史</span>
+          </Link>
         </div>
       </div>
     </div>

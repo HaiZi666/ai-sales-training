@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -16,8 +18,44 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
+/* 移动端安全区域 */
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.safe-area-top {
+  padding-top: var(--safe-area-top);
+}
+
+/* 禁用 iOS 输入框缩放 */
+input[type="text"],
+input[type="input"],
+input[type="number"],
+textarea {
+  font-size: 16px !important;
+}
+
+/* 移动端优化 */
+* {
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+/* 滚动条隐藏（但保持滚动功能） */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* 动画 */
 .animate-bounce {
   animation: bounce 1s infinite;
 }
@@ -37,4 +75,25 @@ body {
   50% {
     transform: translateY(-25%);
   }
+}
+
+/* 移动端底部导航栏 */
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding-bottom: var(--safe-area-bottom);
+  z-index: 50;
+}
+
+/* 移动端顶部状态栏 */
+.mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: white;
+  padding-top: var(--safe-area-top);
 }

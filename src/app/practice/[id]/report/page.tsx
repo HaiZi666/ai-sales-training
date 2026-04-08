@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface DimensionScore {
   name: string;
@@ -65,8 +66,18 @@ export default function ReportPage() {
   const percentage = Math.round((report.totalScore / 100) * 100);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
       <div className="max-w-2xl mx-auto">
+        {/* 返回按钮 */}
+        <div className="flex items-center gap-3 mb-6">
+          <Link
+            href="/"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm hover:shadow-md active:bg-gray-100"
+          >
+            <span className="text-gray-600">←</span>
+          </Link>
+          <span className="text-gray-500 text-sm">返回首页</span>
+        </div>
         {/* 头部 */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">演练报告</h1>
@@ -165,16 +176,34 @@ export default function ReportPage() {
         <div className="flex gap-4">
           <button
             onClick={() => router.push('/practice/new')}
-            className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
+            className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-semibold active:bg-blue-700"
           >
             再来一次
           </button>
           <button
             onClick={() => router.push('/history')}
-            className="flex-1 py-4 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50"
+            className="flex-1 py-4 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold active:bg-gray-50"
           >
             查看历史
           </button>
+        </div>
+      </div>
+
+      {/* 移动端底部导航 */}
+      <div className="mobile-nav">
+        <div className="flex justify-around py-3">
+          <Link href="/" className="flex flex-col items-center gap-1 text-gray-500">
+            <span className="text-xl">🏠</span>
+            <span className="text-xs">首页</span>
+          </Link>
+          <Link href="/practice/new" className="flex flex-col items-center gap-1 text-gray-500">
+            <span className="text-xl">🎯</span>
+            <span className="text-xs">新建</span>
+          </Link>
+          <Link href="/history" className="flex flex-col items-center gap-1 text-gray-500">
+            <span className="text-xl">📝</span>
+            <span className="text-xs">历史</span>
+          </Link>
         </div>
       </div>
     </div>
