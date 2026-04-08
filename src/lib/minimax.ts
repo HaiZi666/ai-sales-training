@@ -1,5 +1,6 @@
 // MiniMax API 配置
-const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || '';
+const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || 'sk-api-tnuzXAAWKSNX6y8v_JFZJAMYysyc6f_fG90eso0Mu0n8iglsRZ5W05CauspootmNprw6_Pf3T1geyHTlA-uMJF74znoUZ5LCHOVitE642SHm3Z-aseOcozQ';
+const MINIMAX_GROUP_ID = process.env.MINIMAX_GROUP_ID || '2036736733525057806';
 const MINIMAX_BASE_URL = 'https://api.minimax.chat/v1';
 
 // TTS语音合成 - 转换为URL
@@ -21,6 +22,7 @@ export async function textToSpeech(
       },
       body: JSON.stringify({
         model: 'speech-02-hd',
+        group_id: MINIMAX_GROUP_ID,
         text,
         stream: false,
         voice_setting: {
@@ -87,7 +89,7 @@ export async function speechToText(
 export async function generateAIResponse(
   systemPrompt: string,
   conversationHistory: { role: string; content: string }[],
-  model: string = 'MiniMax-Text-01'
+  model: string = 'abab6.5s-chat'
 ): Promise<string> {
   if (!MINIMAX_API_KEY) {
     // Demo模式 - 返回模拟回复
@@ -107,6 +109,7 @@ export async function generateAIResponse(
     },
     body: JSON.stringify({
       model,
+      group_id: MINIMAX_GROUP_ID,
       messages,
       temperature: 0.7,
       max_tokens: 500,
@@ -149,7 +152,7 @@ function generateDemoResponse(lastMessage: string): string {
 // 评分生成
 export async function generateScore(
   scoringPrompt: string,
-  model: string = 'MiniMax-Text-01'
+  model: string = 'abab6.5s-chat'
 ): Promise<{
   score: number;
   feedback: string;
@@ -182,6 +185,7 @@ export async function generateScore(
     },
     body: JSON.stringify({
       model,
+      group_id: MINIMAX_GROUP_ID,
       messages,
       temperature: 0.3,
       max_tokens: 800,
