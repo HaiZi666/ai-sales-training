@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFAQs, searchFAQs, getFAQsByCategory } from '@/lib/knowledge';
+import { faqs, searchFAQs, getFAQsByScenario, getAllScenarios } from '@/lib/knowledge';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
-    const category = searchParams.get('category');
+    const scenario = searchParams.get('scenario');
 
-    let faqs;
+    let result;
     if (query) {
-      faqs = searchFAQs(query);
-    } else if (category) {
-      faqs = getFAQsByCategory(category);
+      result = searchFAQs(query);
+    } else if (scenario) {
+      result = getFAQsByScenario(scenario as any);
     } else {
-      faqs = getFAQs();
+      result = faqs;
     }
 
-    return NextResponse.json({ faqs });
+    return NextResponse.json({ 
+      faqs: result,
+      scenarios: getAllScenarios()
+    });
   } catch (error) {
     console.error('获取FAQ失败:', error);
     return NextResponse.json({ error: '获取FAQ失败' }, { status: 500 });

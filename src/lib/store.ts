@@ -1,7 +1,49 @@
 import { Session, Message, NodeScore, PracticeReport, DialogNode, SCORING_CONFIG, NODE_ORDER } from '@/types';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import path from 'path';
 
-// 内存存储（MVP阶段使用）
+const DATA_FILE = path.join(process.cwd(), 'data', 'sessions.json');
+
+// 内存存储
 const sessions = new Map<string, Session>();
+
+// 确保数据目录存在
+function ensureDataDir() {
+  const dir = path.dirname(DATA_FILE);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+}
+
+// 从文件加载数据
+function loadFromFile() {
+  try {
+    if (existsSync(DATA_FILE)) {
+      const data = readFileSync(DATA_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(s => sessions.set(s.id, s));
+      }
+      console.log(`[Store] Loaded ${sessions.size} sessions from disk`);
+    }
+  } catch (e) {
+    console.error('[Store] Failed to load sessions:', e);
+  }
+}
+
+// 保存数据到文件
+function saveToFile() {
+  try {
+    ensureDataDir();
+    const all = Array.from(sessions.values());
+    writeFileSync(DATA_FILE, JSON.stringify(all, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Store] Failed to save sessions:', e);
+  }
+}
+
+// 初始化时加载数据
+loadFromFile();
 
 // 生成唯一ID
 export function generateId(): string {
@@ -28,6 +70,7 @@ export function createSession(
     startedAt: new Date().toISOString(),
   };
   sessions.set(session.id, session);
+  saveToFile();
   return session;
 }
 
@@ -55,6 +98,7 @@ export function addMessage(
     createdAt: new Date().toISOString(),
   };
   session.messages.push(message);
+  saveToFile();
   return message;
 }
 
@@ -63,6 +107,7 @@ export function addScore(sessionId: string, score: NodeScore): void {
   const session = sessions.get(sessionId);
   if (!session) throw new Error('Session not found');
   session.scores.push(score);
+  saveToFile();
 }
 
 // 更新当前节点
@@ -70,6 +115,7 @@ export function updateCurrentNode(sessionId: string, node: DialogNode): void {
   const session = sessions.get(sessionId);
   if (!session) throw new Error('Session not found');
   session.currentNode = node;
+  saveToFile();
 }
 
 // 结束会话
@@ -78,6 +124,7 @@ export function finishSession(sessionId: string): Session {
   if (!session) throw new Error('Session not found');
   session.status = 'finished';
   session.finishedAt = new Date().toISOString();
+  saveToFile();
   return session;
 }
 
@@ -86,7 +133,6 @@ export function generateReport(sessionId: string): PracticeReport {
   const session = sessions.get(sessionId);
   if (!session) throw new Error('Session not found');
 
-  // 计算各维度得分
   const dimensionScores = SCORING_CONFIG;
   const dimensions = NODE_ORDER.map(node => {
     const nodeScores = session.scores.filter(s => s.node === node);
@@ -106,7 +152,6 @@ export function generateReport(sessionId: string): PracticeReport {
   const maxTotal = dimensions.reduce((sum, d) => sum + d.max, 0);
   const percentage = (totalScore / maxTotal) * 100;
 
-  // 计算等级
   let grade: string;
   if (percentage >= 90) grade = 'A+';
   else if (percentage >= 85) grade = 'A';
@@ -115,14 +160,12 @@ export function generateReport(sessionId: string): PracticeReport {
   else if (percentage >= 60) grade = 'C';
   else grade = 'D';
 
-  // 找出亮点和薄弱点
   const sorted = [...dimensions].sort((a, b) => (b.score / b.max) - (a.score / a.max));
   const highlight = sorted[0] ? `${sorted[0].name}环节表现最佳（${sorted[0].score}/${sorted[0].max}）` : '';
   const weakness = sorted[sorted.length - 1]?.score < (sorted[sorted.length - 1]?.max || 1) * 0.6
     ? `${sorted[sorted.length - 1].name}环节需要加强` 
     : '';
 
-  // 收集改进建议
   const improvements = session.scores
     .flatMap(s => s.suggestions)
     .filter((v, i, a) => v && a.indexOf(v) === i)

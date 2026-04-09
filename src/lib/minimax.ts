@@ -1,6 +1,6 @@
 // MiniMax API 配置
-const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || 'sk-api-tnuzXAAWKSNX6y8v_JFZJAMYysyc6f_fG90eso0Mu0n8iglsRZ5W05CauspootmNprw6_Pf3T1geyHTlA-uMJF74znoUZ5LCHOVitE642SHm3Z-aseOcozQ';
-const MINIMAX_GROUP_ID = process.env.MINIMAX_GROUP_ID || '2036736733525057806';
+const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || '';
+const MINIMAX_GROUP_ID = process.env.MINIMAX_GROUP_ID || '';
 const MINIMAX_BASE_URL = 'https://api.minimax.chat/v1';
 
 // TTS语音合成 - 转换为URL
@@ -96,9 +96,13 @@ export async function generateAIResponse(
     return generateDemoResponse(conversationHistory[conversationHistory.length - 1]?.content || '');
   }
 
+  // 转换角色：sales->user, ai->assistant (MiniMax只支持这三种角色)
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...conversationHistory,
+    ...conversationHistory.map(m => ({
+      role: m.role === 'sales' ? 'user' : 'assistant',
+      content: m.content,
+    })),
   ];
 
   const response = await fetch(`${MINIMAX_BASE_URL}/text/chatcompletion_v2`, {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession, addMessage, addScore, updateCurrentNode } from '@/lib/store';
+import { getSession, addMessage, addScore } from '@/lib/store';
 import { buildSystemPrompt, buildScoringPrompt } from '@/lib/prompts';
 import { generateAIResponse, generateScore } from '@/lib/minimax';
-import { SCORING_CONFIG, DialogNode, NODE_ORDER } from '@/types';
+import { SCORING_CONFIG } from '@/types';
+import { faqs, getAllScenarios } from '@/lib/knowledge';
 
 export async function POST(
   request: NextRequest,
@@ -21,14 +22,14 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { text, node } = body;
+    const { text } = body;
 
     if (!text) {
       return NextResponse.json({ error: '消息内容不能为空' }, { status: 400 });
     }
 
     // 保存销售的回复
-    const salesMessage = addMessage(id, 'sales', text, node as DialogNode);
+    const salesMessage = addMessage(id, 'sales', text, '开场');
 
     // 构建对话历史（用于AI上下文）
     const conversationHistory = session.messages.map(m => ({
@@ -38,19 +39,20 @@ export async function POST(
     // 添加当前销售消息
     conversationHistory.push({ role: 'sales', content: text });
 
-    // 构建AI系统Prompt
+    // 构建FAQ上下文 - 包含完整的问答库供AI参考
+    const faqContext = buildFAQContext();
+    
+    // 构建AI系统Prompt（包含FAQ）
     const systemPrompt = buildSystemPrompt(
       session.customerType,
       session.customerScore,
       session.customerSubject,
-      node || session.currentNode
+      faqContext
     );
 
-    // 评分
-    const currentNode = node || session.currentNode;
-    const scoringConfig = SCORING_CONFIG[currentNode as DialogNode];
+    // 评分（简化评分维度）
+    const scoringConfig = SCORING_CONFIG['开场'];
     const scoringPrompt = buildScoringPrompt(
-      currentNode,
       text,
       scoringConfig.maxScore,
       scoringConfig.criteria
@@ -71,7 +73,7 @@ export async function POST(
 
     // 保存评分
     addScore(id, {
-      node: currentNode as DialogNode,
+      node: '开场',
       score: nodeScore.score,
       maxScore: scoringConfig.maxScore,
       feedback: nodeScore.feedback,
@@ -80,53 +82,22 @@ export async function POST(
       suggestions: nodeScore.suggestions,
     });
 
-    // 判断是否升级节点
-    const currentIndex = NODE_ORDER.indexOf(currentNode as DialogNode);
-    let nextNode = currentNode;
-    const salesLower = text.toLowerCase();
-    
-    // 节点升级关键词判断
-    const upgradeKeywords: Record<string, string[]> = {
-      挖需求: ['分数', '排名', '成绩', '弱科', '听不懂', '考试', '班级', '年级'],
-      提信心: ['基础', '方法', '提高', '提升', '信心', '解决', '原因'],
-      举例: ['案例', '例子', '学生', '之前', '效果', '提分', '进步'],
-      给方案: ['课程', '安排', '时间', '学习', '方案', '体验', '怎么学'],
-      邀约确认: ['时间', '地点', '地址', '过来', '到店', '预约', '周几', '几点'],
-    };
-
-    for (let i = currentIndex + 1; i < NODE_ORDER.length; i++) {
-      const keywords = upgradeKeywords[NODE_ORDER[i]] || [];
-      if (keywords.some(kw => salesLower.includes(kw))) {
-        nextNode = NODE_ORDER[i];
-        break;
-      }
-    }
-
-    // 如果消息数量达到一定轮数且当前不是最后一个节点，也自动升级
-    const messageCountInNode = session.messages.filter(m => m.node === currentNode).length;
-    if (messageCountInNode >= 3 && currentIndex < NODE_ORDER.length - 1) {
-      nextNode = NODE_ORDER[currentIndex + 1];
-    }
-
-    updateCurrentNode(id, nextNode as DialogNode);
+    // 全局30轮限制
+    const totalMessageCount = session.messages.length;
+    const MAX_TURNS = 30;
+    const shouldEnd = totalMessageCount >= MAX_TURNS;
 
     // 生成AI回复
     const aiResponse = await generateAIResponse(systemPrompt, conversationHistory);
 
     // 保存AI回复
-    const aiMessage = addMessage(id, 'ai', aiResponse, nextNode as DialogNode);
-
-    // 检查是否应该结束会话
-    const shouldEnd = 
-      (nextNode === '邀约确认' && messageCountInNode >= 2) ||
-      text.includes('好的') || text.includes('行') || 
-      (text.includes('来') && text.includes('试试'));
+    const aiMessage = addMessage(id, 'ai', aiResponse, '开场');
 
     return NextResponse.json({
       aiMessage: aiResponse,
       aiMessageId: aiMessage.id,
       nodeScore: {
-        node: currentNode,
+        node: '开场',
         score: nodeScore.score,
         maxScore: scoringConfig.maxScore,
         feedback: nodeScore.feedback,
@@ -134,11 +105,38 @@ export async function POST(
         weaknesses: nodeScore.weaknesses,
         suggestions: nodeScore.suggestions,
       },
-      nextNode,
+      nextNode: '开场',
       isFinished: shouldEnd,
     });
   } catch (error) {
     console.error('发送消息失败:', error);
     return NextResponse.json({ error: '发送消息失败' }, { status: 500 });
   }
+}
+
+// 构建FAQ上下文给AI参考
+function buildFAQContext(): string {
+  const scenarios = getAllScenarios();
+  
+  let context = `
+# 家长常见问题库
+
+以下是家长可能会问的问题，按场景分类。你需要根据销售说的话：
+1. 选择合适的回应
+2. 选择1个追问
+
+## 各场景问题列表
+
+`;
+
+  for (const scenario of scenarios) {
+    const items = faqs.filter(f => f.scenario === scenario);
+    context += `### ${scenario}\n`;
+    for (const item of items) {
+      context += `- "${item.question}"（回答参考：${item.answer}）\n`;
+    }
+    context += '\n';
+  }
+
+  return context;
 }
