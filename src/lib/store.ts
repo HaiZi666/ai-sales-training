@@ -133,24 +133,27 @@ export function generateReport(sessionId: string): PracticeReport {
   const session = sessions.get(sessionId);
   if (!session) throw new Error('Session not found');
 
-  const dimensionScores = SCORING_CONFIG;
-  const dimensions = NODE_ORDER.map(node => {
-    const nodeScores = session.scores.filter(s => s.node === node);
-    const totalScore = nodeScores.reduce((sum, s) => sum + s.score, 0);
-    const avgScore = nodeScores.length > 0 ? Math.round(totalScore / nodeScores.length) : 0;
-    return {
-      name: node,
-      score: avgScore,
-      max: dimensionScores[node].maxScore,
-      detail: nodeScores.length > 0 
-        ? nodeScores[nodeScores.length - 1].feedback 
-        : '该环节未进行评估',
-    };
-  });
+  // 计算综合评分
+  const allScores = session.scores;
+  const totalScore = allScores.reduce((sum, s) => sum + s.score, 0);
+  const totalMax = allScores.reduce((sum, s) => sum + s.maxScore, 0);
+  const avgScore = allScores.length > 0 ? Math.round(totalScore / allScores.length) : 0;
+  
+  // 获取最后一次反馈作为主要评价
+  const lastFeedback = allScores.length > 0 
+    ? allScores[allScores.length - 1].feedback 
+    : '暂无评价';
 
-  const totalScore = dimensions.reduce((sum, d) => sum + d.score, 0);
-  const maxTotal = dimensions.reduce((sum, d) => sum + d.max, 0);
-  const percentage = (totalScore / maxTotal) * 100;
+  // 由于当前版本没有节点推进，所有评分都计入"综合表现"
+  const dimensions = [{
+    name: '综合表现',
+    score: avgScore,
+    max: 15,
+    detail: lastFeedback,
+  }];
+
+  // 计算百分制
+  const percentage = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
 
   let grade: string;
   if (percentage >= 90) grade = 'A+';
@@ -160,13 +163,26 @@ export function generateReport(sessionId: string): PracticeReport {
   else if (percentage >= 60) grade = 'C';
   else grade = 'D';
 
-  const sorted = [...dimensions].sort((a, b) => (b.score / b.max) - (a.score / a.max));
-  const highlight = sorted[0] ? `${sorted[0].name}环节表现最佳（${sorted[0].score}/${sorted[0].max}）` : '';
-  const weakness = sorted[sorted.length - 1]?.score < (sorted[sorted.length - 1]?.max || 1) * 0.6
-    ? `${sorted[sorted.length - 1].name}环节需要加强` 
+  // 亮点：找出得分最高的一次评价
+  const bestScore = allScores.length > 0 
+    ? Math.max(...allScores.map(s => s.score))
+    : 0;
+  const bestFeedbackObj = allScores.find(s => s.score === bestScore);
+  const highlight = allScores.length > 0 
+    ? `最佳表现（${bestScore}分）：${bestFeedbackObj?.feedback?.slice(0, 50) || ''}...` 
     : '';
 
-  const improvements = session.scores
+  // 薄弱点：找出得分最低的一次评价
+  const worstScore = allScores.length > 0 
+    ? Math.min(...allScores.map(s => s.score))
+    : 0;
+  const worstFeedbackObj = allScores.find(s => s.score === worstScore);
+  const weakness = allScores.length > 0 && worstScore < avgScore - 2
+    ? `有待提高（${worstScore}分）：${worstFeedbackObj?.feedback?.slice(0, 50) || ''}...`
+    : '';
+
+  // 收集所有改进建议（去重）
+  const improvements = allScores
     .flatMap(s => s.suggestions)
     .filter((v, i, a) => v && a.indexOf(v) === i)
     .slice(0, 5);

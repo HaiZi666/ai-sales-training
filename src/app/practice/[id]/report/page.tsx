@@ -30,6 +30,16 @@ export default function ReportPage() {
   useEffect(() => {
     const fetchReport = async () => {
       try {
+        // 先获取session状态
+        const sessionRes = await fetch(`/api/sessions/${params.id}`);
+        const sessionData = await sessionRes.json();
+        
+        // 如果会话还没结束，重定向到对话页面
+        if (sessionData.session && sessionData.session.status !== 'finished') {
+          router.replace(`/practice/${params.id}`);
+          return;
+        }
+        
         const res = await fetch(`/api/sessions/${params.id}/report`);
         const data = await res.json();
         if (data.report) {
@@ -45,7 +55,7 @@ export default function ReportPage() {
     if (params.id) {
       fetchReport();
     }
-  }, [params.id]);
+  }, [params.id, router]);
 
   if (loading) {
     return (

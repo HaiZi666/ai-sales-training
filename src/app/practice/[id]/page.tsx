@@ -81,9 +81,19 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           });
           setCurrentNode(data.session.currentNode);
 
-          if (data.session.aiOpeningMessage) {
+          // 加载完整对话历史
+          if (data.session.messages && data.session.messages.length > 0) {
+            const loadedMessages: Message[] = data.session.messages.map((m: any) => ({
+              id: m.id,
+              role: m.role as 'ai' | 'sales',
+              content: m.content,
+              node: m.node as DialogNode,
+              audioUrl: m.audioUrl,
+            }));
+            setMessages(loadedMessages);
+          } else if (data.session.aiOpeningMessage) {
+            // 如果没有历史消息，只有开场白
             const audioUrl = data.session.aiOpeningAudio;
-
             const openingMsg: Message = {
               id: '1',
               role: 'ai',
@@ -334,16 +344,6 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {/* 进度条 */}
-      <div className="bg-white px-4 py-2 border-b shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-            <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
-          </div>
-          <span className="text-xs text-gray-500 shrink-0">{Math.round(progress)}%</span>
-        </div>
-      </div>
-
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 hide-scrollbar">
         {messages.map(msg => (
@@ -443,67 +443,89 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
         )}
       </div>
 
-      {/* 评分面板 */}
+      {/* 评分面板 - 显示历史对话总结评分 */}
       {showScorePanel && (
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowScorePanel(false)} />
           <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl z-50 max-h-[70vh] overflow-y-auto safe-area-bottom">
             <div className="sticky top-0 bg-white px-4 py-3 border-b flex items-center justify-between">
-              <h3 className="font-semibold text-lg">实时评分</h3>
+              <h3 className="font-semibold text-lg">对话评分总结</h3>
               <button onClick={() => setShowScorePanel(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">✕</button>
             </div>
             <div className="p-4">
-              <div className="mb-4">
-                <div className="text-sm text-gray-500 mb-2">当前节点</div>
-                <div className="flex flex-wrap gap-2">
-                  {NODE_ORDER.map((node, i) => (
-                    <div key={node} className={`px-3 py-1 rounded-full text-sm ${i <= currentNodeIndex ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {node}
-                    </div>
-                  ))}
+              {/* 综合评分展示 */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4">
+                <div className="text-center">
+                  <div className="text-sm text-gray-500 mb-1">综合评分</div>
+                  <div className="text-4xl font-bold text-blue-600">
+                    {scores.length > 0 
+                      ? Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length)
+                      : '--'
+                    }
+                    <span className="text-lg text-gray-400">/15</span>
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">共 {scores.length} 次评价</div>
                 </div>
               </div>
 
-              {nodeScore && (
+              {/* 最佳/最差表现 */}
+              {scores.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <div className="text-xs text-green-600 mb-1">最佳表现</div>
+                    <div className="text-lg font-bold text-green-700">
+                      {Math.max(...scores.map(s => s.score))}分
+                    </div>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3">
+                    <div className="text-xs text-red-600 mb-1">最差表现</div>
+                    <div className="text-lg font-bold text-red-700">
+                      {Math.min(...scores.map(s => s.score))}分
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 最近一次评分详情 */}
+              {scores.length > 0 && scores[scores.length - 1] && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{nodeScore.node}</span>
-                    <span className="text-lg font-bold text-blue-600">{nodeScore.score}/{nodeScore.maxScore}</span>
+                    <span className="text-sm font-medium">最近评价</span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {scores[scores.length - 1].score}/{scores[scores.length - 1].maxScore}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">{nodeScore.feedback}</p>
-                  {nodeScore.suggestions.length > 0 && (
+                  <p className="text-sm text-gray-600 mb-2">{scores[scores.length - 1].feedback}</p>
+                  {scores[scores.length - 1].suggestions.length > 0 && (
                     <div className="mt-3">
                       <div className="text-xs text-gray-500 mb-1">改进建议：</div>
                       <ul className="text-xs text-gray-600 space-y-1">
-                        {nodeScore.suggestions.map((s, i) => <li key={i}>• {s}</li>)}
+                        {scores[scores.length - 1].suggestions.map((s, i) => <li key={i}>• {s}</li>)}
                       </ul>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="space-y-3">
-                <div className="text-sm font-medium text-gray-700">评分维度</div>
-                {NODE_ORDER.map(node => {
-                  const config = SCORING_CONFIG[node];
-                  const nodeScores = scores.filter(s => s.node === node);
-                  const latestScore = nodeScores[nodeScores.length - 1];
-                  return (
-                    <div key={node} className="border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{node}</span>
-                        <span className="text-sm text-gray-500">{latestScore ? `${latestScore.score}/` : '0/'}{config.maxScore}</span>
+              {/* 所有改进建议 */}
+              {scores.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-2">全部改进建议</div>
+                  <div className="space-y-2">
+                    {Array.from(new Set(scores.flatMap(s => s.suggestions))).slice(0, 5).map((suggestion, i) => (
+                      <div key={i} className="text-xs text-gray-600 bg-yellow-50 rounded-lg px-3 py-2">
+                        • {suggestion}
                       </div>
-                      <div className="bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="bg-blue-500 h-1.5 rounded-full transition-all"
-                          style={{ width: latestScore ? `${(latestScore.score / config.maxScore) * 100}%` : '0%' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {scores.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  暂无评分数据，继续对话后会自动评分
+                </div>
+              )}
             </div>
           </div>
         </>

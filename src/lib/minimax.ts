@@ -201,11 +201,37 @@ export async function generateScore(
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '{}';
+  let content = data.choices?.[0]?.message?.content || '{}';
 
+  // 尝试从markdown代码块中提取JSON
+  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    content = jsonMatch[1].trim();
+  }
+
+  // 尝试解析JSON，如果失败则返回错误
   try {
-    return JSON.parse(content);
+    const result = JSON.parse(content);
+    // 确保返回的格式正确
+    if (typeof result.score !== 'number') {
+      throw new Error('Invalid score format');
+    }
+    return result;
   } catch {
+    // 如果JSON解析失败，尝试从文本中提取信息
+    const scoreMatch = content.match(/"score"\s*:\s*(\d+)/);
+    const feedbackMatch = content.match(/"feedback"\s*:\s*"([^"]*)"/);
+    
+    if (scoreMatch) {
+      return {
+        score: parseInt(scoreMatch[1], 10),
+        feedback: feedbackMatch ? feedbackMatch[1] : '评分已生成',
+        strengths: [],
+        weaknesses: [],
+        suggestions: [],
+      };
+    }
+    
     return {
       score: 0,
       feedback: '评分解析失败',

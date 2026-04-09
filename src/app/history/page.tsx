@@ -82,7 +82,7 @@ export default function HistoryPage() {
               <div
                 key={session.id}
                 className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => router.push(`/practice/${session.id}/report`)}
+                onClick={() => router.push(`/practice/${session.id}`)}
               >
                 <div className="flex items-center justify-between">
                   <div>
