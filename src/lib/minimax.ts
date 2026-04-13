@@ -241,3 +241,94 @@ export async function generateScore(
     };
   }
 }
+
+// 综合评分生成（对话结束时调用）
+export async function generateComprehensiveScore(
+  scoringPrompt: string,
+  model: string = 'MiniMax-Text-01'
+): Promise<{
+  dimensions: { name: string; score: number; maxScore: number; detail: string }[];
+  totalScore: number;
+  grade: string;
+  highlight: string;
+  weakness: string;
+  improvements: string[];
+}> {
+  if (!MINIMAX_API_KEY) {
+    // Demo模式
+    return {
+      dimensions: [
+        { name: '开场', score: 10, maxScore: 15, detail: '（Demo模式）' },
+        { name: '挖需求', score: 15, maxScore: 25, detail: '（Demo模式）' },
+        { name: '提信心', score: 10, maxScore: 15, detail: '（Demo模式）' },
+        { name: '举例', score: 12, maxScore: 20, detail: '（Demo模式）' },
+        { name: '给方案', score: 10, maxScore: 15, detail: '（Demo模式）' },
+        { name: '邀约确认', score: 6, maxScore: 10, detail: '（Demo模式）' },
+      ],
+      totalScore: 63,
+      grade: 'C',
+      highlight: 'Demo模式综合评分',
+      weakness: 'Demo模式',
+      improvements: ['建议配置API Key'],
+    };
+  }
+
+  const messages = [
+    { role: 'system', content: '你是一个专业的销售话术评分专家，输出标准JSON格式。' },
+    { role: 'user', content: scoringPrompt },
+  ];
+
+  const response = await fetch(`${MINIMAX_BASE_URL}/text/chatcompletion_v2`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${MINIMAX_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.3,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`MiniMax API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  let content = data.choices?.[0]?.message?.content || '{}';
+
+  // 尝试从markdown代码块中提取JSON
+  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    content = jsonMatch[1].trim();
+  }
+
+  try {
+    const result = JSON.parse(content);
+    // 确保返回格式正确
+    if (!result.dimensions || !Array.isArray(result.dimensions)) {
+      throw new Error('Invalid comprehensive score format');
+    }
+    return result;
+  } catch (error) {
+    console.error('综合评分解析失败:', error);
+    // 返回默认评分
+    return {
+      dimensions: [
+        { name: '开场', score: 0, maxScore: 15, detail: '评分解析失败' },
+        { name: '挖需求', score: 0, maxScore: 25, detail: '评分解析失败' },
+        { name: '提信心', score: 0, maxScore: 15, detail: '评分解析失败' },
+        { name: '举例', score: 0, maxScore: 20, detail: '评分解析失败' },
+        { name: '给方案', score: 0, maxScore: 15, detail: '评分解析失败' },
+        { name: '邀约确认', score: 0, maxScore: 10, detail: '评分解析失败' },
+      ],
+      totalScore: 0,
+      grade: 'D',
+      highlight: '评分解析失败',
+      weakness: '请检查对话内容',
+      improvements: [],
+    };
+  }
+}

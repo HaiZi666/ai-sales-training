@@ -44,7 +44,7 @@ ${faqContext}
 - 随机应变，不要每次都问一样的问题`;
 }
 
-// 评分Prompt
+// 评分Prompt（单个回复评分）
 export function buildScoringPrompt(
   salesResponse: string,
   maxScore: number,
@@ -68,5 +68,112 @@ ${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
   "strengths": ["亮点1", "亮点2"],
   "weaknesses": ["不足1", "不足2"],
   "suggestions": ["改进建议1", "改进建议2"]
+}`;
+}
+
+// 综合评分Prompt（对话结束时调用）
+export function buildComprehensiveScoringPrompt(
+  conversationHistory: { role: string; content: string }[],
+  customerType: string,
+  customerScore: string,
+  customerSubject: string
+): string {
+  return `你是销售话术评分专家。请根据完整对话记录，对销售的整个销售过程进行多维度评分。
+
+## 对话记录：
+${conversationHistory.map((m, i) => `${i + 1}. [${m.role === 'sales' ? '销售' : '客户'}]：${m.content}`).join('\n')}
+
+## 客户信息：
+- 客户类型：${customerType}
+- 孩子成绩：${customerScore}
+- 弱科：${customerSubject}
+
+## 评分维度（每个维度都要评分）：
+
+### 1. 开场（15分）
+考核标准：
+- 自我介绍是否清晰（机构名 + 老师身份）
+- 是否提及当下需求（如：期中考试后/免费体验）
+- 话术是否简洁明了
+
+### 2. 挖需求（25分）
+考核标准：
+- 是否询问学生最近一次考试的成绩
+- 是否询问分数/班级/年级排名
+- 是否了解弱科及弱项
+- 是否按成绩分段分层应对
+- 是否帮学生预设目标并提醒差距
+
+### 3. 提信心（15分）
+考核标准：
+- 是否有分析学生不爱学习/进步慢的原因
+- 是否针对不同成绩分层提信心
+- 是否有举案例佐证
+
+### 4. 举例（20分）
+考核标准：
+- 是否举了真实案例（相似情况）
+- 案例是否有变化过程描述
+- 案例是否按成绩分层匹配
+- 是否举了克服困难到店的案例
+
+### 5. 给方案（15分）
+考核标准：
+- 是否给出可行性方案
+- 方案是否结合产品功能
+- 是否再次邀约到店
+
+### 6. 邀约确认（10分）
+考核标准：
+- 是否和家长协商好具体到店时间
+- 是否发送服务中心位置/门头照片
+- 是否发送预约到店消息（含时间、地点、联系人）
+
+## 输出要求
+请严格按照以下JSON格式输出，对每个维度都要评分，不要遗漏：
+{
+  "dimensions": [
+    {
+      "name": "开场",
+      "score": 数字（0-15）,
+      "maxScore": 15,
+      "detail": "该环节的评价要点"
+    },
+    {
+      "name": "挖需求",
+      "score": 数字（0-25）,
+      "maxScore": 25,
+      "detail": "该环节的评价要点"
+    },
+    {
+      "name": "提信心",
+      "score": 数字（0-15）,
+      "maxScore": 15,
+      "detail": "该环节的评价要点"
+    },
+    {
+      "name": "举例",
+      "score": 数字（0-20）,
+      "maxScore": 20,
+      "detail": "该环节的评价要点"
+    },
+    {
+      "name": "给方案",
+      "score": 数字（0-15）,
+      "maxScore": 15,
+      "detail": "该环节的评价要点"
+    },
+    {
+      "name": "邀约确认",
+      "score": 数字（0-10）,
+      "maxScore": 10,
+      "detail": "该环节的评价要点"
+    }
+  ],
+  "totalScore": 数字（0-100）,
+  "grade": "等级（A+/A/B+/B/C/D）",
+  "highlight": "亮点描述",
+  "weakness": "薄弱点描述",
+  "improvements": ["改进建议1", "改进建议2", "改进建议3"]
 }`;
 }
