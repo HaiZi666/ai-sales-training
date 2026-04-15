@@ -73,6 +73,10 @@ export interface Session {
   scores: NodeScore[];
   startedAt: string;
   finishedAt?: string;
+  // 新增字段
+  customerChannel?: 'direct_push' | 'whitelist';
+  examNode?: '开学考' | '月考' | '期中考' | '期末考' | '寒暑假';
+  grade?: '初一' | '初二' | '初三' | '高一' | '高二' | '高三';
 }
 
 // 评分配置

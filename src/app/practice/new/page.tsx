@@ -1,40 +1,120 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CUSTOMER_TYPE_CONFIG, CustomerType } from '@/types';
 
-const CUSTOMER_TYPES: CustomerType[] = ['type_a', 'type_b', 'type_c'];
+// 演练模式
+type VoiceMode = 'text' | 'voice';
+
+// 客户类型（地推/白名单）
+type CustomerChannel = 'direct_push' | 'whitelist';
+
+// 考试节点
+type ExamNode = '开学考' | '月考' | '期中考' | '期末考' | '寒暑假';
+
+// 年级
+type Grade = '初一' | '初二' | '初三' | '高一' | '高二' | '高三';
+
+// 成绩分段
+type ScoreLevel = '成绩优秀型' | '成绩中游型' | '成绩薄弱型';
+
+// 客户画像（映射到现有 CustomerType）
+type CustomerProfile = 'type_a' | 'type_b' | 'type_c';
+
+// 配置选项
+const VOICE_MODES: { value: VoiceMode; label: string; emoji: string; desc: string }[] = [
+  { value: 'text', label: '文字模式', emoji: '💬', desc: '输入文字进行对话' },
+  { value: 'voice', label: '语音模式', emoji: '🎤', desc: '语音对话，AI语音回复' },
+];
+
+const CUSTOMER_CHANNELS: { value: CustomerChannel; label: string; emoji: string; desc: string }[] = [
+  { value: 'direct_push', label: '地推', emoji: '📍', desc: '线下地推客户' },
+  { value: 'whitelist', label: '白名单', emoji: '⭐', desc: '白名单客户' },
+];
+
+const EXAM_NODES: ExamNode[] = ['开学考', '月考', '期中考', '期末考', '寒暑假'];
+
+const GRADES: Grade[] = ['初一', '初二', '初三', '高一', '高二', '高三'];
+
+const SCORE_LEVELS: ScoreLevel[] = ['成绩优秀型', '成绩中游型', '成绩薄弱型'];
+
+// 客户画像配置（复用现有逻辑）
+const CUSTOMER_PROFILE_CONFIG: Record<CustomerProfile, { name: string; desc: string }> = {
+  type_a: { name: '成绩优秀型', desc: '目标高、挑剔、喜欢比较' },
+  type_b: { name: '成绩中游型', desc: '犹豫不决、需要案例说服' },
+  type_c: { name: '成绩薄弱型', desc: '焦虑、担心花钱无效' },
+};
+
+interface FormState {
+  voiceMode: VoiceMode | null;
+  customerChannel: CustomerChannel | null;
+  examNode: ExamNode | null;
+  grade: Grade | null;
+  scoreLevel: ScoreLevel | null;
+  customerProfile: CustomerProfile | null;
+}
 
 export default function NewPracticePage() {
   const router = useRouter();
-  const [customerType, setCustomerType] = useState<CustomerType | null>(null);
-  const [customerScore, setCustomerScore] = useState<string>('');
-  const [customerSubject, setCustomerSubject] = useState<string>('');
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [form, setForm] = useState<FormState>({
+    voiceMode: null,
+    customerChannel: null,
+    examNode: null,
+    grade: null,
+    scoreLevel: null,
+    customerProfile: null,
+  });
   const [isCreating, setIsCreating] = useState(false);
 
+  // 检查所有字段是否已填写
+  const isFormComplete = Object.values(form).every(v => v !== null);
+
+  const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      // 第6步客户画像默认跟随第2步客户类型
+      if (key === 'customerChannel') {
+        const channelToProfile: Record<CustomerChannel, CustomerProfile> = {
+          direct_push: 'type_a',
+          whitelist: 'type_b',
+        };
+        next.customerProfile = channelToProfile[value as CustomerChannel];
+      }
+      return next;
+    });
+  };
+
   const handleStart = async () => {
-    if (!customerType || !customerScore || !customerSubject) {
+    if (!isFormComplete) {
       alert('请填写所有字段');
       return;
     }
 
     setIsCreating(true);
     try {
+      // 构建映射：成绩分段 -> CustomerType
+      const scoreToCustomerType: Record<ScoreLevel, CustomerProfile> = {
+        '成绩优秀型': 'type_a',
+        '成绩中游型': 'type_b',
+        '成绩薄弱型': 'type_c',
+      };
+
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           salespersonId: 'demo_user',
-          customerType,
-          customerScore,
-          customerSubject,
-          voiceMode: isVoiceMode,
+          customerType: form.customerProfile,
+          customerScore: form.scoreLevel,
+          customerSubject: '待定',
+          voiceMode: form.voiceMode === 'voice',
+          customerChannel: form.customerChannel,
+          examNode: form.examNode,
+          grade: form.grade,
         }),
       });
-      
+
       const data = await res.json();
       if (data.sessionId) {
         router.push(`/practice/${data.sessionId}`);
@@ -46,6 +126,14 @@ export default function NewPracticePage() {
       setIsCreating(false);
     }
   };
+
+  // 通用卡片样式
+  const cardClass = (isSelected: boolean) =>
+    `p-4 rounded-lg border-2 text-center font-medium transition-all cursor-pointer ${
+      isSelected
+        ? 'border-blue-500 bg-blue-50'
+        : 'border-gray-200 hover:border-gray-300 bg-white'
+    }`;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
@@ -60,122 +148,141 @@ export default function NewPracticePage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">新建演练</h1>
         <p className="text-gray-600 mb-8">选择配置，开始AI陪练</p>
 
-        {/* 模式选择 */}
+        {/* Step 1: 选择演练模式 */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">0. 选择演练模式</h2>
+          <h2 className="text-lg font-semibold mb-4">1. 选择演练模式</h2>
           <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setIsVoiceMode(false)}
-              className={`p-4 rounded-lg border-2 text-center transition-all ${
-                !isVoiceMode
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="text-2xl mb-2">💬</div>
-              <div className="font-medium">文字模式</div>
-              <div className="text-gray-500 text-sm mt-1">输入文字进行对话</div>
-            </button>
-            <button
-              onClick={() => setIsVoiceMode(true)}
-              className={`p-4 rounded-lg border-2 text-center transition-all ${
-                isVoiceMode
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="text-2xl mb-2">🎤</div>
-              <div className="font-medium">语音模式</div>
-              <div className="text-gray-500 text-sm mt-1">语音对话，AI语音回复</div>
-            </button>
+            {VOICE_MODES.map(mode => (
+              <div
+                key={mode.value}
+                onClick={() => updateForm('voiceMode', mode.value)}
+                className={cardClass(form.voiceMode === mode.value)}
+              >
+                <div className="text-2xl mb-2">{mode.emoji}</div>
+                <div className="font-medium">{mode.label}</div>
+                <div className="text-gray-500 text-sm mt-1">{mode.desc}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 客户类型选择 */}
+        {/* Step 2: 选择客户类型 */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">1. 选择客户类型</h2>
+          <h2 className="text-lg font-semibold mb-4">2. 选择客户类型</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {CUSTOMER_CHANNELS.map(ch => (
+              <div
+                key={ch.value}
+                onClick={() => updateForm('customerChannel', ch.value)}
+                className={cardClass(form.customerChannel === ch.value)}
+              >
+                <div className="text-2xl mb-2">{ch.emoji}</div>
+                <div className="font-medium">{ch.label}</div>
+                <div className="text-gray-500 text-sm mt-1">{ch.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 3: 选择考试节点 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">3. 选择考试节点</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {EXAM_NODES.map(node => (
+              <div
+                key={node}
+                onClick={() => updateForm('examNode', node)}
+                className={cardClass(form.examNode === node)}
+              >
+                {node}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 4: 选择年级 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">4. 选择年级</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {GRADES.map(grade => (
+              <div
+                key={grade}
+                onClick={() => updateForm('grade', grade)}
+                className={cardClass(form.grade === grade)}
+              >
+                {grade}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 5: 选择成绩 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">5. 选择成绩</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {SCORE_LEVELS.map(score => (
+              <div
+                key={score}
+                onClick={() => updateForm('scoreLevel', score)}
+                className={cardClass(form.scoreLevel === score)}
+              >
+                {score}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 6: 选择客户画像 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4">6. 选择客户画像</h2>
           <div className="grid gap-4">
-            {CUSTOMER_TYPES.map(type => {
-              const config = CUSTOMER_TYPE_CONFIG[type];
-              const isSelected = customerType === type;
+            {(Object.keys(CUSTOMER_PROFILE_CONFIG) as CustomerProfile[]).map(key => {
+              const config = CUSTOMER_PROFILE_CONFIG[key];
+              const isSelected = form.customerProfile === key;
               return (
-                <button
-                  key={type}
-                  onClick={() => setCustomerType(type)}
-                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                <div
+                  key={key}
+                  onClick={() => updateForm('customerProfile', key)}
+                  className={`p-4 rounded-lg border-2 text-left transition-all cursor-pointer ${
                     isSelected
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
                 >
                   <div className="font-medium text-lg">{config.name}</div>
-                  <div className="text-gray-600 text-sm mt-1">{config.description}</div>
-                </button>
+                  <div className="text-gray-600 text-sm mt-1">{config.desc}</div>
+                </div>
               );
             })}
           </div>
-        </div>
-
-        {/* 客户成绩 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">2. 选择客户成绩</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {['优秀', '中游', '较差'].map(score => (
-              <button
-                key={score}
-                onClick={() => setCustomerScore(score)}
-                className={`p-4 rounded-lg border-2 text-center font-medium transition-all ${
-                  customerScore === score
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {score}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 弱科选择 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">3. 选择弱科</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {['数学', '英语', '物理', '化学', '语文', '其他'].map(subject => (
-              <button
-                key={subject}
-                onClick={() => setCustomerSubject(subject)}
-                className={`p-4 rounded-lg border-2 text-center font-medium transition-all ${
-                  customerSubject === subject
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {subject}
-              </button>
-            ))}
-          </div>
+          <p className="text-gray-500 text-sm mt-3">
+            💡 客户画像已根据您选择的客户类型自动匹配
+          </p>
         </div>
 
         {/* 开始按钮 */}
         <button
           onClick={handleStart}
-          disabled={!customerType || !customerScore || !customerSubject || isCreating}
+          disabled={!isFormComplete || isCreating}
           className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
-            !customerType || !customerScore || !customerSubject
+            !isFormComplete
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
-          {isCreating ? '创建中...' : '开始演练'}
+          {isCreating ? '创建中...' : '开始AI陪练'}
         </button>
 
         {/* 提示信息 */}
         <div className="mt-6 text-center text-gray-500 text-sm">
-          {isVoiceMode && (
+          {form.voiceMode === 'voice' && (
             <p className="text-blue-600">🎤 语音模式已开启，AI将以语音回复</p>
           )}
-          {!isVoiceMode && (
+          {form.voiceMode === 'text' && (
             <p>💬 文字模式，输入文字与AI对话</p>
+          )}
+          {form.voiceMode === null && (
+            <p>请选择演练模式开始配置</p>
           )}
         </div>
       </div>

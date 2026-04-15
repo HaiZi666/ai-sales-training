@@ -7,7 +7,16 @@ import { textToSpeech } from '@/lib/minimax';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { salespersonId, customerType, customerScore, customerSubject, voiceMode } = body;
+    const {
+      salespersonId,
+      customerType,
+      customerScore,
+      customerSubject,
+      voiceMode,
+      customerChannel,
+      examNode,
+      grade,
+    } = body;
 
     if (!customerType || !customerScore || !customerSubject) {
       return NextResponse.json(
@@ -22,6 +31,11 @@ export async function POST(request: NextRequest) {
       customerScore,
       customerSubject
     );
+
+    // 扩展字段记录到会话
+    if (customerChannel) session.customerChannel = customerChannel;
+    if (examNode) session.examNode = examNode;
+    if (grade) session.grade = grade;
 
     // 生成AI开场白
     const config = CUSTOMER_TYPE_CONFIG[customerType as keyof typeof CUSTOMER_TYPE_CONFIG];
@@ -51,6 +65,9 @@ export async function POST(request: NextRequest) {
       aiOpeningMessage: aiMessage,
       aiOpeningAudio,
       currentNode: session.currentNode,
+      customerChannel,
+      examNode,
+      grade,
     });
   } catch (error) {
     console.error('创建会话失败:', error);
