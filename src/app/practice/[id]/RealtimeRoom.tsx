@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { MiniMaxRealtimeClient, TextDeltaEvent } from '@/lib/realtime';
 import { textToSpeech } from '@/lib/minimax';
 import { DialogNode, NODE_ORDER } from '@/types';
+import { buildSystemPrompt, buildNodeFaqContext } from '@/lib/prompts';
+import { getFAQsByScenario } from '@/lib/knowledge';
 
 interface RealtimeRoomProps {
   sessionId: string;
@@ -70,16 +72,27 @@ export default function RealtimeRoom({
     setError(null);
 
     try {
+      // 生成节点感知的FAQ上下文
+      const faqContext = buildNodeFaqContext(
+        currentNode,
+        customerType as 'type_a' | 'type_b' | 'type_c',
+        (scenario) => getFAQsByScenario(scenario as any)
+      );
+
+      // 构建完整的系统提示词
+      const instructions = buildSystemPrompt(
+        customerType as 'type_a' | 'type_b' | 'type_c',
+        customerScore,
+        customerSubject,
+        faqContext,
+        currentNode
+      );
+
       const client = new MiniMaxRealtimeClient({
         apiKey: MINIMAX_API_KEY,
         model: 'abab6.5s-chat',
         modalities: ['text'],
-        instructions: `你是学生家长的角色，模拟真实对话。
-- 孩子成绩类型: ${customerScore}
-- 弱科: ${customerSubject}
-- 性格: 根据成绩类型设定，${customerScore === '优秀' ? '挑剔、喜欢比较' : customerScore === '较差' ? '焦虑、担心效果' : '犹豫不决、需要案例'}
-- 说话自然，口语化，不要太长
-- 适当提出质疑，测试销售应对能力`,
+        instructions,
       });
 
       clientRef.current = client;
