@@ -36,6 +36,9 @@ interface Session {
 
 type Mode = 'text' | 'voice' | 'realtime';
 
+// 展示弹窗的最大次数
+const MAX_SHOW_END_CONFIRM_DIALOG_COUNT = 10;
+
 export default function PracticeSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -51,6 +54,8 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [showScorePanel, setShowScorePanel] = useState(false);
+  const [showEndConfirmDialog, setShowEndConfirmDialog] = useState(false);
+  const hasShownTenRoundDialog = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -198,6 +203,16 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
       if (data.isFinished) {
         setIsFinished(true);
       }
+
+      // 10 轮对话后弹出确认弹窗（仅触发一次）
+      setMessages(prev => {
+        const userCount = prev.filter(m => m.role === 'sales').length;
+        if (userCount >= MAX_SHOW_END_CONFIRM_DIALOG_COUNT && !hasShownTenRoundDialog.current) {
+          hasShownTenRoundDialog.current = true;
+          setShowEndConfirmDialog(true);
+        }
+        return prev;
+      });
     } catch (error) {
       console.error('发送消息失败:', error);
     } finally {
@@ -526,6 +541,37 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
                   暂无评分数据，继续对话后会自动评分
                 </div>
               )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 10 轮对话结束确认弹窗 */}
+      {showEndConfirmDialog && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" />
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-2xl z-50 shadow-xl overflow-hidden">
+            <div className="px-5 pt-6 pb-2 text-center">
+              <div className="text-3xl mb-3">💬</div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">已进行 {MAX_SHOW_END_CONFIRM_DIALOG_COUNT} 轮对话</h3>
+              <p className="text-sm text-gray-500">本次沟通是否已经结束？</p>
+            </div>
+            <div className="p-4 space-y-2">
+              <button
+                onClick={() => {
+                  setShowEndConfirmDialog(false);
+                  handleEnd();
+                }}
+                className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium text-base active:bg-blue-700"
+              >
+                已结束，查看评分报告
+              </button>
+              <button
+                onClick={() => setShowEndConfirmDialog(false)}
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium text-base active:bg-gray-200"
+              >
+                还没结束，继续对话
+              </button>
             </div>
           </div>
         </>
