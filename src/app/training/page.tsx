@@ -92,11 +92,16 @@ export default function TrainingPage() {
           <div className="text-3xl">🎓</div>
           <div>
             <h2 className="font-semibold text-gray-800 mb-1">培训规则</h2>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• AI 考官将依次出 <span className="font-medium text-indigo-600">5 道题</span></li>
-              <li>• 每道题满分 <span className="font-medium text-indigo-600">10 分</span>，共 50 分</li>
-              <li>• 回答后 AI 即时评分并给出参考要点</li>
-              <li>• 结束后展示总分和改进建议</li>
+            <ul className="text-sm text-gray-600 space-y-1.5">
+              <li>• 题库题目<span className="font-medium text-indigo-600">随机顺序</span>逐题出完，答完为止</li>
+              <li>• 每道题满分 <span className="font-medium text-indigo-600">10 分</span>，完成所有题目后统一评分</li>
+              <li>• 评分基于关键词匹配：
+                <span className="font-medium text-green-600"> 9 分</span>（要点齐全）·
+                <span className="font-medium text-blue-600"> 7 分</span>（基本正确）·
+                <span className="font-medium text-yellow-600"> 5 分</span>（部分正确）·
+                <span className="font-medium text-red-500"> 3 分</span>（偏离要点）
+              </li>
+              <li>• 结束后展示总分、等级（A–E）及每题参考答案</li>
             </ul>
           </div>
         </div>
