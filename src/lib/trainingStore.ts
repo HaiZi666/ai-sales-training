@@ -1,6 +1,5 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import * as XLSX from 'xlsx';
 
 export type QuestionType = 'sales_faq' | 'product_basics';
 
@@ -88,42 +87,37 @@ function saveToFile() {
 
 loadFromFile();
 
+// 各题型对应的 Excel 列名配置
+const COLUMN_CONFIG: Record<QuestionType, { question: string; answer: string }> = {
+  sales_faq:      { question: '常见问题', answer: '话术建议' },
+  product_basics: { question: '问题',     answer: '答案' },
+};
+
 /**
  * Read questions from Excel file
+ * 表格格式：第一行为表头，从第二行开始每行一道题
  */
 function readQuestionsFromExcel(questionType: QuestionType): TrainingQuestion[] {
   try {
+    // 使用动态 require 避免 Next.js 打包时 xlsx 内部 fs 被替换为浏览器 polyfill
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const XLSX = require('xlsx') as typeof import('xlsx');
     const filePath = path.join(DATA_DIR, QUESTION_TYPE_FILE_MAP[questionType]);
     const workbook = XLSX.readFile(filePath);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
 
-    const questions: TrainingQuestion[] = [];
-    let globalIndex = 0;
+    const { question: questionCol, answer: answerCol } = COLUMN_CONFIG[questionType];
 
-    rawData.forEach((row, rowIndex) => {
-      const questionText = row['常问问题'] || '';
-      
-      // Split questions by newline and filter empty strings
-      const questionList = questionText
-        .split('\n')
-        .map(q => q.trim())
-        .filter(q => q.length > 0);
-
-      // Get standard answer from 破冰标准话术 or 结尾确定时间
-      const standardAnswer = row['破冰标准话术'] || row['结尾确定时间，下痛点话术'] || '';
-
-      questionList.forEach((question) => {
-        globalIndex++;
-        questions.push({
-          id: `${questionType}-${rowIndex}-${globalIndex}`,
-          question,
-          standardAnswer,
-          scenario: row['场景类型'] || '通用',
-          node: row['节点'] || '通用',
-        });
-      });
-    });
+    const questions: TrainingQuestion[] = rawData
+      .map((row, rowIndex) => ({
+        id: `${questionType}-${rowIndex}`,
+        question: (row[questionCol] || '').trim(),
+        standardAnswer: (row[answerCol] || '').trim(),
+        scenario: (row['场景类型'] || '通用').trim(),
+        node: (row['节点'] || '通用').trim(),
+      }))
+      .filter(q => q.question.length > 0); // 过滤空行
 
     return questions;
   } catch (e) {

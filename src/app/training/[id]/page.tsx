@@ -114,17 +114,17 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
         setAskedCount(data.askedCount);
         setShowSummary(true);
       } else if (data.nextQuestion) {
-        // Next question
+        // Next question：题号 = 已答题数 + 1
         setCurrentQuestion(data.nextQuestion);
         setCurrentQuestionId(data.nextQuestionId);
         setCurrentStandardAnswer(data.currentStandardAnswer || '');
-        const nextIdx = data.askedCount;
-        setQuestionIndex(nextIdx - 1);
-        setAskedCount(nextIdx);
+        const nextQuestionNumber = data.askedCount + 1;
+        setQuestionIndex(nextQuestionNumber - 1);
+        setAskedCount(nextQuestionNumber);
         const nextMsg: ChatMessage = {
-          id: `q-${nextIdx}`,
+          id: `q-${nextQuestionNumber}`,
           role: 'ai',
-          content: `**第 ${nextIdx} 题**\n\n${data.nextQuestion}`,
+          content: `**第 ${nextQuestionNumber} 题**\n\n${data.nextQuestion}`,
         };
         setMessages(prev => [...prev, nextMsg]);
       }

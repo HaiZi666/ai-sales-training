@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createTrainingSession, getTrainingSession, addTrainingMessage, getQuestionTypeName, QuestionType } from '@/lib/trainingStore';
+import { createTrainingSession, addTrainingMessage, markQuestionAsked, getQuestionTypeName, QuestionType } from '@/lib/trainingStore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,12 +25,8 @@ export async function POST(request: NextRequest) {
     const openingMessage = `接下来对您进行${questionTypeName}培训，请直接作答。`;
     addTrainingMessage(session.id, 'ai', openingMessage);
 
-    // Mark first question as asked
-    const markedSession = getTrainingSession(session.id);
-    if (markedSession) {
-      markedSession.askedQuestionIds.push(firstQuestion.id);
-      markedSession.currentQuestionIndex = 1;
-    }
+    // 正确标记第1题为已出题（会持久化到文件）
+    markQuestionAsked(session.id, firstQuestion.id);
 
     return NextResponse.json({
       sessionId: session.id,
