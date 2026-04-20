@@ -8,17 +8,14 @@ interface ChatMessage {
   id: string;
   role: 'ai' | 'user';
   content: string;
-  score?: number;
-  maxScore?: number;
-  correctAnswer?: string;
   isEval?: boolean;
+  isOpening?: boolean;
 }
 
-interface ScoreRecord {
-  questionIndex: number;
-  score: number;
-  maxScore: number;
-  feedback: string;
+interface QuestionResult {
+  question: string;
+  standardAnswer: string;
+  userAnswer: string;
 }
 
 export default function TrainingSessionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,12 +26,15 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
+  const [currentQuestionId, setCurrentQuestionId] = useState('');
+  const [currentStandardAnswer, setCurrentStandardAnswer] = useState('');
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [scores, setScores] = useState<ScoreRecord[]>([]);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [askedCount, setAskedCount] = useState(0);
   const [questionTypeLabel, setQuestionTypeLabel] = useState('');
   const [showSummary, setShowSummary] = useState(false);
+  const [questionResults, setQuestionResults] = useState<QuestionResult[]>([]);
 
-  const TOTAL_QUESTIONS = 5;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,15 +43,24 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     const firstQuestion = searchParams.get('firstQuestion') || '';
+    const firstQuestionId = searchParams.get('firstQuestionId') || '';
     const label = searchParams.get('questionTypeLabel') || '基础知识培训';
+    const total = parseInt(searchParams.get('totalQuestions') || '0', 10);
+    const opening = searchParams.get('openingMessage') || '';
+
     setQuestionTypeLabel(label);
+    setCurrentQuestion(firstQuestion);
+    setCurrentQuestionId(firstQuestionId);
+    setTotalQuestions(total);
+    setAskedCount(1);
+
     if (firstQuestion) {
-      setCurrentQuestion(firstQuestion);
       setMessages([
         {
-          id: 'welcome',
+          id: 'opening',
           role: 'ai',
-          content: `欢迎来到【${label}】培训！共 ${TOTAL_QUESTIONS} 道题，每题满分 10 分。请认真作答，AI 将即时评分。`,
+          content: opening,
+          isOpening: true,
         },
         {
           id: 'q1',
@@ -79,50 +88,43 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
     setInputText('');
     setIsLoading(true);
 
+    // Save question and answer for later evaluation
+    const result: QuestionResult = {
+      question: currentQuestion,
+      standardAnswer: currentStandardAnswer,
+      userAnswer: text,
+    };
+    setQuestionResults(prev => [...prev, result]);
+
     try {
       const res = await fetch(`/api/training/sessions/${sessionId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          currentQuestion,
-          questionIndex,
+          currentQuestionId,
         }),
       });
 
       const data = await res.json();
 
-      // 评分反馈消息
-      const evalMsg: ChatMessage = {
-        id: `eval-${Date.now()}`,
-        role: 'ai',
-        content: data.feedback,
-        score: data.score,
-        maxScore: data.maxScore,
-        correctAnswer: data.correctAnswer,
-        isEval: true,
-      };
-      setMessages(prev => [...prev, evalMsg]);
-
-      // 记录评分
-      setScores(prev => [...prev, {
-        questionIndex,
-        score: data.score,
-        maxScore: data.maxScore,
-        feedback: data.feedback,
-      }]);
-
       if (data.isFinished) {
+        // Training finished - show evaluation
         setIsFinished(true);
+        setAskedCount(data.askedCount);
         setShowSummary(true);
       } else if (data.nextQuestion) {
-        const nextIdx = data.currentQuestionIndex;
+        // Next question
         setCurrentQuestion(data.nextQuestion);
-        setQuestionIndex(nextIdx);
+        setCurrentQuestionId(data.nextQuestionId);
+        setCurrentStandardAnswer(data.currentStandardAnswer || '');
+        const nextIdx = data.askedCount;
+        setQuestionIndex(nextIdx - 1);
+        setAskedCount(nextIdx);
         const nextMsg: ChatMessage = {
-          id: `q-${nextIdx + 1}`,
+          id: `q-${nextIdx}`,
           role: 'ai',
-          content: `**第 ${nextIdx + 1} 题**\n\n${data.nextQuestion}`,
+          content: `**第 ${nextIdx} 题**\n\n${data.nextQuestion}`,
         };
         setMessages(prev => [...prev, nextMsg]);
       }
@@ -138,8 +140,57 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
-  const totalMax = scores.reduce((sum, s) => sum + s.maxScore, 0);
+  // Simple evaluation based on keyword matching
+  const evaluateAnswer = (userAnswer: string, standardAnswer: string): { score: number; feedback: string } => {
+    if (!userAnswer.trim()) {
+      return { score: 0, feedback: '未作答' };
+    }
+    if (!standardAnswer.trim()) {
+      // If no standard answer, give partial credit for any response
+      return { score: 7, feedback: '已作答' };
+    }
+
+    // Remove special characters and normalize
+    const cleanAnswer = standardAnswer.replace(/[*#]/g, '').toLowerCase();
+    const cleanUser = userAnswer.replace(/[*#]/g, '').toLowerCase();
+
+    // Extract key phrases (words longer than 2 characters)
+    const keyPhrases = cleanAnswer
+      .split(/[,，。.、\n]/)
+      .map(p => p.trim())
+      .filter(p => p.length > 2);
+
+    const matchedPhrases = keyPhrases.filter(p => cleanUser.includes(p));
+    const matchRate = keyPhrases.length > 0 ? matchedPhrases.length / keyPhrases.length : 0;
+
+    let score: number;
+    let feedback: string;
+
+    if (matchRate >= 0.6) {
+      score = 9;
+      feedback = '回答准确，要点齐全';
+    } else if (matchRate >= 0.4) {
+      score = 7;
+      feedback = '回答基本正确，但有遗漏';
+    } else if (matchRate >= 0.2) {
+      score = 5;
+      feedback = '回答部分正确，核心要点不完整';
+    } else {
+      score = 3;
+      feedback = '回答偏离要点';
+    }
+
+    return { score, feedback };
+  };
+
+  // Calculate final results
+  const finalResults = questionResults.map(r => ({
+    ...r,
+    ...evaluateAnswer(r.userAnswer, r.standardAnswer),
+  }));
+
+  const totalScore = finalResults.reduce((sum, r) => sum + r.score, 0);
+  const totalMax = finalResults.length * 10;
   const scorePercent = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
   const grade =
     scorePercent >= 90 ? 'A' :
@@ -164,7 +215,7 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
           <div>
             <h2 className="font-semibold text-sm text-gray-800">{questionTypeLabel}</h2>
             <p className="text-xs text-gray-500">
-              {isFinished ? '培训完成' : `第 ${questionIndex + 1} / ${TOTAL_QUESTIONS} 题`}
+              {isFinished ? '培训完成' : `第 ${askedCount} / ${totalQuestions} 题`}
             </p>
           </div>
         </div>
@@ -174,14 +225,9 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
           <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-indigo-500 rounded-full transition-all"
-              style={{ width: `${((isFinished ? TOTAL_QUESTIONS : questionIndex) / TOTAL_QUESTIONS) * 100}%` }}
+              style={{ width: `${totalQuestions > 0 ? ((isFinished ? totalQuestions : askedCount - 1) / totalQuestions) * 100 : 0}%` }}
             />
           </div>
-          {scores.length > 0 && (
-            <span className="text-xs font-medium text-indigo-600">
-              {totalScore}/{totalMax}分
-            </span>
-          )}
         </div>
       </div>
 
@@ -189,54 +235,22 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.isEval ? (
-              // 评分卡片
-              <div className="max-w-[85%] w-full">
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                  {/* 分数头部 */}
-                  <div className={`px-4 py-3 flex items-center justify-between ${
-                    (msg.score ?? 0) >= 8 ? 'bg-green-50' :
-                    (msg.score ?? 0) >= 6 ? 'bg-blue-50' : 'bg-orange-50'
-                  }`}>
-                    <span className="text-sm font-medium text-gray-700">AI 评分</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-xl font-bold ${
-                        (msg.score ?? 0) >= 8 ? 'text-green-600' :
-                        (msg.score ?? 0) >= 6 ? 'text-blue-600' : 'text-orange-600'
-                      }`}>
-                        {msg.score}
-                      </span>
-                      <span className="text-gray-400 text-sm">/ {msg.maxScore}</span>
-                    </div>
-                  </div>
-                  {/* 评价内容 */}
-                  <div className="px-4 py-3">
-                    <p className="text-sm text-gray-700 leading-relaxed">{msg.content}</p>
-                    {msg.correctAnswer && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-xs text-gray-500 mb-1">参考要点：</p>
-                        <p className="text-sm text-indigo-700 leading-relaxed">{msg.correctAnswer}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-indigo-500 text-white rounded-br-sm'
-                  : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
-              }`}>
-                {msg.content.split('\n').map((line, i) => (
-                  <span key={i}>
-                    {line.startsWith('**') && line.endsWith('**')
-                      ? <strong>{line.slice(2, -2)}</strong>
-                      : line}
-                    {i < msg.content.split('\n').length - 1 && <br />}
-                  </span>
-                ))}
-              </div>
-            )}
+            <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+              msg.role === 'user'
+                ? 'bg-indigo-500 text-white rounded-br-sm'
+                : msg.isOpening
+                ? 'bg-indigo-50 text-indigo-700 rounded-bl-sm border border-indigo-200'
+                : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
+            }`}>
+              {msg.content.split('\n').map((line, i) => (
+                <span key={i}>
+                  {line.startsWith('**') && line.endsWith('**')
+                    ? <strong>{line.slice(2, -2)}</strong>
+                    : line}
+                  {i < msg.content.split('\n').length - 1 && <br />}
+                </span>
+              ))}
+            </div>
           </div>
         ))}
 
@@ -316,24 +330,30 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
               {/* 逐题得分 */}
               <h4 className="font-semibold text-gray-700 mb-3">逐题得分</h4>
               <div className="space-y-3 mb-5">
-                {scores.map((s, i) => (
+                {finalResults.map((r, i) => (
                   <div key={i} className="bg-gray-50 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">第 {i + 1} 题</span>
                       <div className="flex items-center gap-1">
-                        <span className={`font-bold ${s.score >= 8 ? 'text-green-600' : s.score >= 6 ? 'text-blue-600' : 'text-orange-600'}`}>
-                          {s.score}
+                        <span className={`font-bold ${r.score >= 8 ? 'text-green-600' : r.score >= 6 ? 'text-blue-600' : 'text-orange-600'}`}>
+                          {r.score}
                         </span>
-                        <span className="text-gray-400 text-sm">/ {s.maxScore}</span>
+                        <span className="text-gray-400 text-sm">/ 10</span>
                       </div>
                     </div>
                     <div className="w-full h-1.5 bg-gray-200 rounded-full">
                       <div
-                        className={`h-full rounded-full ${s.score >= 8 ? 'bg-green-500' : s.score >= 6 ? 'bg-blue-500' : 'bg-orange-500'}`}
-                        style={{ width: `${(s.score / s.maxScore) * 100}%` }}
+                        className={`h-full rounded-full ${r.score >= 8 ? 'bg-green-500' : r.score >= 6 ? 'bg-blue-500' : 'bg-orange-500'}`}
+                        style={{ width: `${(r.score / 10) * 100}%` }}
                       />
                     </div>
-                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">{s.feedback}</p>
+                    <div className="mt-2 text-xs text-gray-600">
+                      <p className="font-medium">你的回答：{r.userAnswer}</p>
+                      {r.standardAnswer && (
+                        <p className="mt-1 text-indigo-600">参考要点：{r.standardAnswer.replace(/[*#]/g, '')}</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">{r.feedback}</p>
                   </div>
                 ))}
               </div>
