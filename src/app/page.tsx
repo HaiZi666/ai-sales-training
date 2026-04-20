@@ -7,7 +7,7 @@ export default function Home() {
         {/* Hero */}
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
-            AI 销售话术陪练
+            AI 销售话术陪练测试
           </h1>
           <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
             让 AI 扮演客户，与销售进行实时对话演练
