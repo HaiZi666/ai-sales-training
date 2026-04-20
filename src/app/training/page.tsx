@@ -54,7 +54,16 @@ export default function TrainingPage() {
       });
       const data = await res.json();
       if (data.sessionId) {
-        router.push(`/training/${data.sessionId}?firstQuestion=${encodeURIComponent(data.firstQuestion)}&questionTypeLabel=${encodeURIComponent(data.questionTypeLabel)}`);
+        const params = new URLSearchParams({
+          firstQuestion: data.firstQuestion || '',
+          firstQuestionId: data.firstQuestionId || '',
+          questionTypeLabel: data.questionTypeName || data.questionTypeLabel || '',
+          totalQuestions: String(data.totalQuestions || 0),
+          openingMessage: data.openingMessage || '',
+        });
+        router.push(`/training/${data.sessionId}?${params.toString()}`);
+      } else {
+        alert(data.error || '创建培训会话失败');
       }
     } catch (error) {
       console.error('创建培训会话失败:', error);
