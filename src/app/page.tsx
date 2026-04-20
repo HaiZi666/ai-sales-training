@@ -7,47 +7,46 @@ export default function Home() {
         {/* Hero */}
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
-            AI 销售话术陪练测试
+            AI销售通
           </h1>
           <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
-            让 AI 扮演客户，与销售进行实时对话演练
+            销售员入门到精通的全方位提升工具 
             <br className="hidden md:block" />
-            6维度智能评分，定位薄弱点，快速提升话术能力
+            助力销售员自信从容应对各种销售问题
           </p>
         </div>
 
         {/* 功能卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="text-2xl mb-3">🎭</div>
-            <h3 className="font-semibold text-base mb-1">AI 客户扮演</h3>
-            <p className="text-gray-600 text-sm">
-              模拟3种客户类型，还原真实咨询场景
-            </p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="text-2xl mb-3">📊</div>
-            <h3 className="font-semibold text-base mb-1">6维评分系统</h3>
-            <p className="text-gray-600 text-sm">
-              开场、挖需求、提信心、举例、给方案、邀约确认
-            </p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5">
-            <div className="text-2xl mb-3">💡</div>
-            <h3 className="font-semibold text-base mb-1">改进建议</h3>
-            <p className="text-gray-600 text-sm">
-              实时反馈优缺点，针对性改进
-            </p>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className="text-center">
           <Link
-            href="/practice/new"
-            className="inline-block w-full md:w-auto px-8 py-4 bg-blue-600 text-white text-base md:text-lg font-semibold rounded-xl active:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+            className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow"
+            href="/training"
           >
-            开始演练
+            <div className="text-2xl mb-3">📖</div>
+            <h3 className="font-semibold text-base mb-1">基础知识训练</h3>
+            <p className="text-gray-600 text-sm">
+              入门训练，助力掌握销售基础知识
+            </p>
+          </Link>
+          <Link
+            className="bg-white rounded-2xl shadow-sm p-5"
+            href="/practice/new"
+          >
+            <div className="text-2xl mb-3">🎭</div>
+            <h3 className="font-semibold text-base mb-1">邀约情景模拟</h3>
+            <p className="text-gray-600 text-sm">
+              还原真实邀约情景，训练不同场景下的应对技巧
+            </p>
+          </Link>
+          <Link
+            href='http://10.200.0.55:8090/upload'
+            className="bg-white rounded-2xl shadow-sm p-5"
+          >
+            <div className="text-2xl mb-3">🎤</div>
+            <h3 className="font-semibold text-base mb-1">录音分析</h3>
+            <p className="text-gray-600 text-sm">
+              实现沟通全流程的自动复盘、智能点评与精准跟进
+            </p>
           </Link>
         </div>
 
@@ -64,9 +63,13 @@ export default function Home() {
             <span className="text-xl">🏠</span>
             <span className="text-xs">首页</span>
           </Link>
+          <Link href="/training" className="flex flex-col items-center gap-1 text-gray-500">
+            <span className="text-xl">📖</span>
+            <span className="text-xs">培训</span>
+          </Link>
           <Link href="/practice/new" className="flex flex-col items-center gap-1 text-gray-500">
             <span className="text-xl">🎯</span>
-            <span className="text-xs">新建</span>
+            <span className="text-xs">演练</span>
           </Link>
           <Link href="/history" className="flex flex-col items-center gap-1 text-gray-500">
             <span className="text-xl">📝</span>
