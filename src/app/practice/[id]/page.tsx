@@ -422,7 +422,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
       )}
 
       {/* 输入区域 */}
-      <div className="bg-white border-t p-4 safe-area-bottom shrink-0">
+      <div className="bg-white border-t p-4 shrink-0">
         {mode === 'voice' ? (
           <div className="flex flex-col items-center gap-3">
             <button
