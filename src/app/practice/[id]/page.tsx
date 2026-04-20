@@ -55,6 +55,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [showScorePanel, setShowScorePanel] = useState(false);
   const [showEndConfirmDialog, setShowEndConfirmDialog] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
   const hasShownTenRoundDialog = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -281,14 +282,17 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   };
 
   const handleEnd = async () => {
-    if (!sessionId) return;
+    if (!sessionId || isEnding) return;
+    setIsEnding(true);
     voice.stopPlaying();
     voice.stopRecording();
     try {
+      // /end 仅做快速的会话状态标记，不再阻塞在 LLM 评分上
       await fetch(`/api/sessions/${sessionId}/end`, { method: 'POST' });
       router.push(`/practice/${sessionId}/report`);
     } catch (error) {
       console.error('结束会话失败:', error);
+      setIsEnding(false);
     }
   };
 
@@ -353,8 +357,15 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           <button onClick={() => setShowScorePanel(!showScorePanel)} className={`px-3 py-2 rounded-lg text-sm transition-colors ${showScorePanel ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
             📊
           </button>
-          <button onClick={handleEnd} className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg active:bg-red-600">
-            结束
+          <button
+            onClick={handleEnd}
+            disabled={isEnding}
+            className={`px-3 py-2 text-white text-sm rounded-lg transition-colors flex items-center gap-1.5 ${isEnding ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 active:bg-red-600'}`}
+          >
+            {isEnding && (
+              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+            {isEnding ? '结束中' : '结束'}
           </button>
         </div>
       </div>
@@ -562,9 +573,13 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
                   setShowEndConfirmDialog(false);
                   handleEnd();
                 }}
-                className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium text-base active:bg-blue-700"
+                disabled={isEnding}
+                className={`w-full py-3 text-white rounded-xl font-medium text-base flex items-center justify-center gap-2 ${isEnding ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 active:bg-blue-700'}`}
               >
-                已结束，查看评分报告
+                {isEnding && (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {isEnding ? '正在结束...' : '已结束，查看评分报告'}
               </button>
               <button
                 onClick={() => setShowEndConfirmDialog(false)}

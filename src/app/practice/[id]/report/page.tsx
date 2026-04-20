@@ -59,8 +59,15 @@ export default function ReportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-5 px-8">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-blue-100" />
+          <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+        </div>
+        <div className="text-center">
+          <p className="text-gray-700 font-medium text-base">正在生成评分报告</p>
+          <p className="text-gray-400 text-sm mt-1">AI 正在分析本次对话，请稍候...</p>
+        </div>
       </div>
     );
   }
