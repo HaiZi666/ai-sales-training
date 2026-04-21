@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 
@@ -15,6 +15,7 @@ interface QuestionResult {
 const RUBRIC_MAX_PER_QUESTION = 9;
 
 export default function TrainingSessionContent({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
@@ -268,6 +269,12 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [endConfirmOpen]);
 
+  /** 关闭培训总结后回到基础知识闯关练选题页 */
+  const closeSummaryAndBackToTraining = useCallback(() => {
+    setShowSummary(false);
+    router.push('/training');
+  }, [router]);
+
   return (
     <div className="flex flex-col h-screen bg-[#f2f3f5]">
       {/* 顶栏：返回 + 标题 + 更多 */}
@@ -460,11 +467,11 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
       {/* 总结弹窗（沿用原有评价展示） */}
       {showSummary && (
         <>
-          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowSummary(false)} />
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={closeSummaryAndBackToTraining} />
           <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl z-50 max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-white px-4 py-4 border-b flex items-center justify-between rounded-t-3xl">
               <h3 className="font-bold text-lg">培训总结</h3>
-              <button type="button" onClick={() => setShowSummary(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500">
+              <button type="button" onClick={closeSummaryAndBackToTraining} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500">
                 ✕
               </button>
             </div>
