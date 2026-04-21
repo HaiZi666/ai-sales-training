@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
+import * as XLSX from 'xlsx';
 
 export type QuestionType = 'sales_faq' | 'product_basics';
 
@@ -55,6 +56,9 @@ const DATA_DIR = path.join(process.cwd(), 'src/data/tables');
 const DATA_FILE = path.join(process.cwd(), 'data', 'training_sessions.json');
 const sessions = new Map<string, TrainingSession>();
 
+// 题库缓存：模块加载时预读，避免请求阶段 require('xlsx') 失败
+const questionCache = new Map<QuestionType, TrainingQuestion[]>();
+
 function ensureDataDir() {
   const dir = path.dirname(DATA_FILE);
   if (!existsSync(dir)) {
@@ -99,10 +103,11 @@ const COLUMN_CONFIG: Record<QuestionType, { question: string; answer: string }> 
  */
 function readQuestionsFromExcel(questionType: QuestionType): TrainingQuestion[] {
   try {
-    // 使用动态 require 避免 Next.js 打包时 xlsx 内部 fs 被替换为浏览器 polyfill
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const XLSX = require('xlsx') as typeof import('xlsx');
+    // serverExternalPackages: ["xlsx"] 已配置，xlsx 由 Node.js 原生加载，静态 import 安全可用
     const filePath = path.join(DATA_DIR, QUESTION_TYPE_FILE_MAP[questionType]);
+
+    console.log(`[TrainingStore] Reading Excel: ${filePath}`);
+
     const workbook = XLSX.readFile(filePath);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
@@ -117,13 +122,38 @@ function readQuestionsFromExcel(questionType: QuestionType): TrainingQuestion[] 
         scenario: (row['场景类型'] || '通用').trim(),
         node: (row['节点'] || '通用').trim(),
       }))
-      .filter(q => q.question.length > 0); // 过滤空行
+      .filter(q => q.question.length > 0);
 
+    console.log(`[TrainingStore] Loaded ${questions.length} questions for ${questionType}`);
     return questions;
   } catch (e) {
-    console.error('[TrainingStore] Failed to read Excel:', e);
+    console.error(`[TrainingStore] Failed to read Excel for ${questionType}:`, e);
     return [];
   }
+}
+
+/**
+ * 获取题库（带缓存）：优先用缓存，缓存为空时重新读取
+ */
+function getQuestions(questionType: QuestionType): TrainingQuestion[] {
+  const cached = questionCache.get(questionType);
+  if (cached && cached.length > 0) return cached;
+
+  const questions = readQuestionsFromExcel(questionType);
+  if (questions.length > 0) {
+    questionCache.set(questionType, questions);
+  }
+  return questions;
+}
+
+// 模块加载时预热题库缓存，确保 xlsx 在首次请求前已就绪
+try {
+  (['sales_faq', 'product_basics'] as QuestionType[]).forEach(type => {
+    const qs = readQuestionsFromExcel(type);
+    if (qs.length > 0) questionCache.set(type, qs);
+  });
+} catch (e) {
+  console.error('[TrainingStore] Warm-up failed:', e);
 }
 
 /**
@@ -143,8 +173,8 @@ export function generateId(): string {
 }
 
 export function createTrainingSession(questionType: QuestionType): TrainingSession {
-  // Read questions from Excel
-  const allQuestions = readQuestionsFromExcel(questionType);
+  // 使用带缓存的题库读取，避免每次请求重新读取 Excel
+  const allQuestions = getQuestions(questionType);
   
   if (allQuestions.length === 0) {
     throw new Error('题库为空或读取失败');
