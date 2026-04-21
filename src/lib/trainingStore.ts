@@ -56,9 +56,6 @@ const DATA_DIR = path.join(process.cwd(), 'src/data/tables');
 const DATA_FILE = path.join(process.cwd(), 'data', 'training_sessions.json');
 const sessions = new Map<string, TrainingSession>();
 
-// 题库缓存：模块加载时预读，避免请求阶段 require('xlsx') 失败
-const questionCache = new Map<QuestionType, TrainingQuestion[]>();
-
 function ensureDataDir() {
   const dir = path.dirname(DATA_FILE);
   if (!existsSync(dir)) {
@@ -133,27 +130,10 @@ function readQuestionsFromExcel(questionType: QuestionType): TrainingQuestion[] 
 }
 
 /**
- * 获取题库（带缓存）：优先用缓存，缓存为空时重新读取
+ * 获取题库：每次直接从 Excel 读取，确保获取最新数据
  */
 function getQuestions(questionType: QuestionType): TrainingQuestion[] {
-  const cached = questionCache.get(questionType);
-  if (cached && cached.length > 0) return cached;
-
-  const questions = readQuestionsFromExcel(questionType);
-  if (questions.length > 0) {
-    questionCache.set(questionType, questions);
-  }
-  return questions;
-}
-
-// 模块加载时预热题库缓存，确保 xlsx 在首次请求前已就绪
-try {
-  (['sales_faq', 'product_basics'] as QuestionType[]).forEach(type => {
-    const qs = readQuestionsFromExcel(type);
-    if (qs.length > 0) questionCache.set(type, qs);
-  });
-} catch (e) {
-  console.error('[TrainingStore] Warm-up failed:', e);
+  return readQuestionsFromExcel(questionType);
 }
 
 /**
