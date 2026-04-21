@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 
 interface ChatMessage {
   id: string;
@@ -35,6 +36,9 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
   const [showSummary, setShowSummary] = useState(false);
   const [questionResults, setQuestionResults] = useState<QuestionResult[]>([]);
 
+  const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const voice = useVoiceRecording();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,8 +79,8 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
-    const text = inputText.trim();
+  const handleSend = useCallback(async (textOverride?: string) => {
+    const text = (textOverride ?? inputText).trim();
     if (!text || isLoading || isFinished || !sessionId) return;
 
     const userMsg: ChatMessage = {
@@ -138,7 +142,35 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
     } finally {
       setIsLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputText, isLoading, isFinished, sessionId, currentQuestion, currentQuestionId, currentStandardAnswer]);
+
+  // 停止录音并上传转写
+  const handleVoiceButton = useCallback(async () => {
+    if (voice.isRecording) {
+      setIsTranscribing(true);
+      const blob = await voice.stopRecording();
+      if (blob) {
+        try {
+          const form = new FormData();
+          form.append('audio', blob, 'recording');
+          const res = await fetch('/api/speech-to-text', { method: 'POST', body: form });
+          if (res.ok) {
+            const { text } = await res.json();
+            if (text?.trim()) {
+              setInputText(text);
+              handleSend(text);
+            }
+          }
+        } catch {
+          // 转写失败时降级为手动输入
+        }
+      }
+      setIsTranscribing(false);
+    } else {
+      await voice.startRecording();
+    }
+  }, [voice, handleSend]);
 
   // Simple evaluation based on keyword matching
   const evaluateAnswer = (userAnswer: string, standardAnswer: string): { score: number; feedback: string } => {
@@ -281,24 +313,97 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
         </div>
       ) : (
         <div className="bg-white border-t px-4 py-3 shrink-0">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder="输入你的回答..."
-              disabled={isLoading || isFinished}
-              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm bg-gray-50"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputText.trim() || isLoading || isFinished}
-              className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-medium text-sm active:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              提交
-            </button>
-          </div>
+          {inputMode === 'text' ? (
+            /* 文字输入模式 */
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={inputText}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder="输入你的回答..."
+                disabled={isLoading || isFinished}
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm bg-gray-50"
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={!inputText.trim() || isLoading || isFinished}
+                className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-medium text-sm active:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                提交
+              </button>
+              {/* 切换到语音 */}
+              <button
+                type="button"
+                onClick={() => setInputMode('voice')}
+                className="w-11 h-11 flex items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition-colors shrink-0"
+                title="切换语音输入"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            /* 语音输入模式 */
+            <div className="flex flex-col items-center gap-3 py-1">
+              {/* 状态提示 */}
+              <p className="text-xs text-gray-400 h-4">
+                {voice.isRecording
+                  ? `录音中… ${voice.duration}s`
+                  : isTranscribing
+                  ? '识别中，请稍候…'
+                  : isLoading
+                  ? '处理中…'
+                  : '点击麦克风开始说话'}
+              </p>
+
+              {voice.error && (
+                <p className="text-xs text-red-500">{voice.error}</p>
+              )}
+
+              <div className="flex items-center gap-4">
+                {/* 切换回文字 */}
+                <button
+                  type="button"
+                  onClick={() => { voice.stopRecording(); setInputMode('text'); }}
+                  className="w-11 h-11 flex items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors"
+                  title="切换文字输入"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z" />
+                  </svg>
+                </button>
+
+                {/* 录音按钮 */}
+                <button
+                  type="button"
+                  onClick={handleVoiceButton}
+                  disabled={isLoading || isTranscribing}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 disabled:opacity-40
+                    ${voice.isRecording
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                >
+                  {voice.isRecording ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ) : isTranscribing ? (
+                    <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* 占位，保持对称 */}
+                <div className="w-11 h-11" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -59,6 +59,8 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   const hasShownTenRoundDialog = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** 静音自动结束录音时，回调可能在数秒后执行，需始终调用最新的发送逻辑 */
+  const handleSendRef = useRef<(textToSend?: string) => Promise<void>>(async () => {});
 
   const voice = useVoiceRecording();
 
@@ -221,52 +223,46 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  handleSendRef.current = handleSend;
+
   const handleRecordingComplete = async () => {
     const blob = await voice.stopRecording();
     if (blob && sessionId) {
       const text = await transcribeAudio(blob);
       if (text) {
-        await handleSend(text);
+        await handleSendRef.current(text);
       }
     }
   };
 
   const transcribeAudio = async (blob: Blob): Promise<string> => {
-    return new Promise((resolve) => {
-      const recognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!recognition) {
-        resolve('');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const audio = new Audio(reader.result as string);
-        audio.onloadedmetadata = () => {};
-      };
-      reader.readAsDataURL(blob);
-
-      const recognizer = new recognition();
-      recognizer.continuous = false;
-      recognizer.interimResults = false;
-      recognizer.lang = 'zh-CN';
-
-      recognizer.onresult = (event: any) => {
-        resolve(event.results[0][0].transcript);
-      };
-      recognizer.onerror = () => resolve('');
-      recognizer.onend = () => resolve('');
-
-      recognizer.start();
-      setTimeout(() => recognizer.stop(), 10000);
-    });
+    try {
+      const form = new FormData();
+      form.append('audio', blob, 'recording');
+      const res = await fetch('/api/speech-to-text', { method: 'POST', body: form });
+      if (!res.ok) return '';
+      const data = await res.json();
+      return data.text || '';
+    } catch {
+      return '';
+    }
   };
 
   const handleVoiceButton = async () => {
     if (voice.isRecording) {
       await handleRecordingComplete();
     } else {
-      await voice.startRecording();
+      await voice.startRecording({
+        autoStopOnSilence: {
+          onComplete: async (blob) => {
+            if (!blob || !sessionId) return;
+            const text = await transcribeAudio(blob);
+            if (text) {
+              await handleSendRef.current(text);
+            }
+          },
+        },
+      });
     }
   };
 
@@ -334,10 +330,6 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           <Link href="/practice/new" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200">
             <span className="text-gray-600 text-xl">←</span>
           </Link>
-          <div>
-            <h2 className="font-semibold text-base">{session?.customerType} · {session?.customerScore}</h2>
-            <p className="text-gray-500 text-xs">当前：{currentNode}</p>
-          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* 模式切换 */}
@@ -439,11 +431,11 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
             {voice.isRecording && (
               <div className="text-center">
                 <div className="text-red-500 font-medium animate-pulse text-sm">录音中... {formatDuration(voice.duration)}</div>
-                <div className="text-gray-500 text-xs mt-1">点击停止发送</div>
+                <div className="text-gray-500 text-xs mt-1">说完停顿约 1.5 秒将自动转文字并发送，也可点击停止立即发送</div>
               </div>
             )}
             {!voice.isRecording && !isLoading && (
-              <div className="text-gray-500 text-sm">点击麦克风开始说话</div>
+              <div className="text-gray-500 text-sm text-center px-2">点击麦克风说话，停顿后自动发送</div>
             )}
           </div>
         ) : (
