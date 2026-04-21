@@ -364,7 +364,7 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
               <div className="mx-3 mb-4 rounded-xl bg-gray-100/90 border border-gray-200/60 overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200/50 bg-gray-100">
                   <span className="text-sm font-medium text-gray-800">你的作答</span>
-                  <div className="flex items-center gap-1 rounded-md border border-gray-200/80 bg-white p-0.5">
+                  {/* <div className="flex items-center gap-1 rounded-md border border-gray-200/80 bg-white p-0.5">
                     <button
                       type="button"
                       onClick={() => setInputMode('text')}
@@ -379,7 +379,7 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
                     >
                       语音
                     </button>
-                  </div>
+                  </div> */}
                 </div>
                 {openingMessage ? (
                   <p className="px-3 py-2.5 text-[13px] text-gray-600 leading-relaxed bg-white/40 border-b border-gray-200/40">
