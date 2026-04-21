@@ -110,10 +110,11 @@ export default function TrainingPage() {
         <h2 className="text-base font-semibold text-gray-700 mb-3">请选择培训题型</h2>
         <div className="space-y-4 mb-8">
           {QUESTION_TYPES.map(type => (
-            <div
+            <button
               key={type.value}
+              type="button"
               onClick={() => setSelected(type.value)}
-              className={`bg-white rounded-2xl p-5 border-2 cursor-pointer transition-all ${
+              className={`w-full text-left bg-white rounded-2xl p-5 border-2 cursor-pointer transition-all ${
                 selected === type.value
                   ? `${type.borderColor} shadow-md`
                   : 'border-gray-200 hover:border-gray-300'
@@ -149,7 +150,7 @@ export default function TrainingPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 

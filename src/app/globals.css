@@ -39,9 +39,16 @@ textarea {
   font-size: 16px !important;
 }
 
-/* 移动端优化 */
-* {
+/* 移动端优化：只在 body 和滚动容器上设置 touch-action，
+   避免影响子元素（div card）上的点击事件 */
+body {
   -webkit-touch-callout: none;
+}
+
+/* 可点击元素确保正常响应触屏 */
+[role="button"],
+button,
+a {
   touch-action: manipulation;
 }
 

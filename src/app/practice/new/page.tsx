@@ -194,9 +194,9 @@ export default function NewPracticePage() {
     }
   };
 
-  // 通用卡片样式
+  // 通用卡片样式（button 元素，移动端可靠响应点击）
   const cardClass = (isSelected: boolean) =>
-    `p-4 rounded-lg border-2 text-center font-medium transition-all cursor-pointer ${
+    `w-full p-4 rounded-lg border-2 text-center font-medium transition-all cursor-pointer ${
       isSelected
         ? 'border-blue-500 bg-blue-50'
         : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -222,15 +222,16 @@ export default function NewPracticePage() {
           <h2 className="text-lg font-semibold mb-4">1. 选择演练模式</h2>
           <div className="grid grid-cols-2 gap-4">
             {VOICE_MODES.map(mode => (
-              <div
+              <button
                 key={mode.value}
+                type="button"
                 onClick={() => handleStepChange('voiceMode', mode.value)}
                 className={cardClass(form.voiceMode === mode.value)}
               >
                 <div className="text-2xl mb-2">{mode.emoji}</div>
                 <div className="font-medium">{mode.label}</div>
                 <div className="text-gray-500 text-sm mt-1">{mode.desc}</div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -240,15 +241,16 @@ export default function NewPracticePage() {
           <h2 className="text-lg font-semibold mb-4">2. 选择客户类型</h2>
           <div className="grid grid-cols-2 gap-4">
             {CUSTOMER_CHANNELS.map(ch => (
-              <div
+              <button
                 key={ch.value}
+                type="button"
                 onClick={() => handleStepChange('customerChannel', ch.value)}
                 className={cardClass(form.customerChannel === ch.value)}
               >
                 <div className="text-2xl mb-2">{ch.emoji}</div>
                 <div className="font-medium">{ch.label}</div>
                 <div className="text-gray-500 text-sm mt-1">{ch.desc}</div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -258,13 +260,14 @@ export default function NewPracticePage() {
           <h2 className="text-lg font-semibold mb-4">3. 选择考试节点</h2>
           <div className="grid grid-cols-3 gap-4">
             {EXAM_NODES.map(node => (
-              <div
+              <button
                 key={node}
+                type="button"
                 onClick={() => updateForm('examNode', node)}
                 className={cardClass(form.examNode === node)}
               >
                 {node}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -274,13 +277,14 @@ export default function NewPracticePage() {
           <h2 className="text-lg font-semibold mb-4">4. 选择年级</h2>
           <div className="grid grid-cols-3 gap-4">
             {GRADES.map(grade => (
-              <div
+              <button
                 key={grade}
+                type="button"
                 onClick={() => handleStepChange('grade', grade)}
                 className={cardClass(form.grade === grade)}
               >
                 {grade}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -290,13 +294,14 @@ export default function NewPracticePage() {
           <h2 className="text-lg font-semibold mb-4">5. 选择成绩</h2>
           <div className="grid grid-cols-3 gap-4">
             {SCORE_LEVELS.map(score => (
-              <div
+              <button
                 key={score}
+                type="button"
                 onClick={() => handleStepChange('scoreLevel', score)}
                 className={cardClass(form.scoreLevel === score)}
               >
                 {score}
-              </div>
+              </button>
             ))}
           </div>
         </div>
