@@ -44,7 +44,7 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     const firstQuestion = searchParams.get('firstQuestion') || '';
     const firstQuestionId = searchParams.get('firstQuestionId') || '';
-    const label = searchParams.get('questionTypeLabel') || '基础知识培训';
+    const label = searchParams.get('questionTypeLabel') || '基础知识闯关练';
     const total = parseInt(searchParams.get('totalQuestions') || '0', 10);
     const opening = searchParams.get('openingMessage') || '';
 

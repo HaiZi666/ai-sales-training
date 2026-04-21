@@ -82,7 +82,7 @@ export default function TrainingPage() {
             ←
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">基础知识培训</h1>
+            <h1 className="text-2xl font-bold text-gray-900">基础知识闯关练</h1>
             <p className="text-gray-500 text-sm">AI 考官出题，即时评分反馈</p>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function TrainingPage() {
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 flex items-start gap-4">
           <div className="text-3xl">🎓</div>
           <div>
-            <h2 className="font-semibold text-gray-800 mb-1">培训规则</h2>
+            <h2 className="font-semibold text-gray-800 mb-1">闯关练规则</h2>
             <ul className="text-sm text-gray-600 space-y-1.5">
               <li>• 题库题目<span className="font-medium text-indigo-600">随机顺序</span>逐题出完，答完为止</li>
               <li>• 每道题满分 <span className="font-medium text-indigo-600">10 分</span>，完成所有题目后统一评分</li>
