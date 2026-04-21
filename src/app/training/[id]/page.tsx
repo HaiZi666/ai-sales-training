@@ -236,30 +236,45 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
     grade === 'C' ? 'text-yellow-600' :
     grade === 'D' ? 'text-orange-600' : 'text-red-600';
 
+  const progressPercent =
+    totalQuestions > 0
+      ? Math.round(((isFinished ? totalQuestions : Math.max(0, askedCount - 1)) / totalQuestions) * 100)
+      : 0;
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* 顶部栏 */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Link href="/training" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500">
-            ←
-          </Link>
-          <div>
-            <h2 className="font-semibold text-sm text-gray-800">{questionTypeLabel}</h2>
-            <p className="text-xs text-gray-500">
-              {isFinished ? '培训完成' : `第 ${askedCount} / ${totalQuestions} 题`}
-            </p>
+      <div className="bg-white border-b px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm">
+        <Link href="/training" className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500">
+          ←
+        </Link>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-semibold text-sm text-gray-800">{questionTypeLabel}</h2>
+          {/* 答题进度：进度条 + 题号/完成态 */}
+          <div className="mt-2 flex items-center gap-3">
+            <div className="flex-1 min-w-0 h-2.5 bg-gray-100 rounded-full overflow-hidden ring-1 ring-inset ring-gray-200/80">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ease-out ${
+                  isFinished ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-violet-500'
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[11px] font-medium tabular-nums text-gray-600 min-w-[4.5rem] text-right">
+              {isFinished ? '已完成' : `${askedCount} / ${totalQuestions}`}
+            </span>
           </div>
-        </div>
-
-        {/* 进度条 */}
-        <div className="flex items-center gap-3">
-          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all"
-              style={{ width: `${totalQuestions > 0 ? ((isFinished ? totalQuestions : askedCount - 1) / totalQuestions) * 100 : 0}%` }}
-            />
-          </div>
+          <p className="mt-1 text-[10px] text-gray-400">
+            {isFinished ? (
+              <>
+                全部题目已作答 · <span className="font-bold text-emerald-600">100%</span>
+              </>
+            ) : (
+              <>
+                进度 <span className="font-bold text-indigo-600">{progressPercent}%</span> · 当前第 {askedCount} 题
+              </>
+            )}
+          </p>
         </div>
       </div>
 
