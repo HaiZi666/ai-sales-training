@@ -56,8 +56,7 @@ const DATA_DIR = path.join(process.cwd(), 'src/data/tables');
 const DATA_FILE = path.join(process.cwd(), 'data', 'training_sessions.json');
 const sessions = new Map<string, TrainingSession>();
 
-// 进程级题库缓存，模块加载时预热；重启后重新读取 Excel
-const questionCache = new Map<QuestionType, TrainingQuestion[]>();
+
 
 function ensureDataDir() {
   const dir = path.dirname(DATA_FILE);
@@ -133,31 +132,10 @@ function readQuestionsFromExcel(questionType: QuestionType): TrainingQuestion[] 
 }
 
 /**
- * 获取题库（带进程内缓存）：首次请求时读取 Excel 并缓存；
- * 服务进程重启后自动重新读取。
+ * 直接从 Excel 读取题库，每次获取最新数据
  */
 function getQuestions(questionType: QuestionType): TrainingQuestion[] {
-  const cached = questionCache.get(questionType);
-  if (cached && cached.length > 0) return cached;
-
-  const questions = readQuestionsFromExcel(questionType);
-  if (questions.length > 0) questionCache.set(questionType, questions);
-  return questions;
-}
-
-// 模块加载时立即预热缓存，使首次 API 请求无需等待 Excel 解析
-try {
-  (['sales_faq', 'product_basics'] as QuestionType[]).forEach(type => {
-    const qs = readQuestionsFromExcel(type);
-    if (qs.length > 0) {
-      questionCache.set(type, qs);
-      console.log(`[TrainingStore] Pre-warmed: ${type} (${qs.length} questions)`);
-    } else {
-      console.warn(`[TrainingStore] Pre-warm failed for: ${type}`);
-    }
-  });
-} catch (e) {
-  console.error('[TrainingStore] Pre-warm error:', e);
+  return readQuestionsFromExcel(questionType);
 }
 
 /**
