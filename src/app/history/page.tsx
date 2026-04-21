@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 interface SessionItem {
   id: string;
@@ -121,23 +121,7 @@ export default function HistoryPage() {
         )}
       </div>
 
-      {/* 移动端底部导航 */}
-      <div className="mobile-nav">
-        <div className="flex justify-around py-3">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-500">
-            <span className="text-xl">🏠</span>
-            <span className="text-xs">首页</span>
-          </Link>
-          <Link href="/practice/new" className="flex flex-col items-center gap-1 text-gray-500">
-            <span className="text-xl">🎯</span>
-            <span className="text-xs">新建</span>
-          </Link>
-          <Link href="/history" className="flex flex-col items-center gap-1 text-blue-600">
-            <span className="text-xl">📝</span>
-            <span className="text-xs">历史</span>
-          </Link>
-        </div>
-      </div>
+      <MobileBottomNav />
     </div>
   );
 }

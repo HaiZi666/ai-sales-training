@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 type QuestionType = 'sales_faq' | 'product_basics';
 
@@ -148,27 +149,7 @@ export default function TrainingPage() {
         </button>
       </div>
 
-      {/* 底部导航 */}
-      <div className="mobile-nav">
-        <div className="flex justify-around py-3">
-          <Link href="/" className="flex flex-col items-center gap-1 text-gray-500">
-            <span className="text-xl">🏠</span>
-            <span className="text-xs">首页</span>
-          </Link>
-          <Link href="/training" className="flex flex-col items-center gap-1 text-indigo-600">
-            <span className="text-xl">📖</span>
-            <span className="text-xs">培训</span>
-          </Link>
-          <Link href="/practice/new" className="flex flex-col items-center gap-1 text-gray-500">
-            <span className="text-xl">🎯</span>
-            <span className="text-xs">演练</span>
-          </Link>
-          <Link href="/history" className="flex flex-col items-center gap-1 text-gray-500">
-            <span className="text-xl">📝</span>
-            <span className="text-xs">历史</span>
-          </Link>
-        </div>
-      </div>
+      <MobileBottomNav />
     </div>
   );
 }
