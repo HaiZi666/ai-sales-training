@@ -100,6 +100,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         resolve(blob);
       };
 
+      try {
+        if (rec.state === 'recording' && typeof rec.requestData === 'function') {
+          rec.requestData();
+        }
+      } catch {
+        /* ignore */
+      }
       rec.stop();
     });
   }, [cleanupSilenceDetection]);
@@ -133,7 +140,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           }
         };
 
-        mediaRecorder.start();
+        // 定期切片：避免部分浏览器（尤其 Safari）仅在 stop 时仍拿不到有效片段，导致 Blob 为空
+        const timesliceMs = 250;
+        try {
+          mediaRecorder.start(timesliceMs);
+        } catch {
+          mediaRecorder.start();
+        }
         setIsRecording(true);
 
         timerRef.current = setInterval(() => {
@@ -143,8 +156,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         const silenceOpts = options?.autoStopOnSilence;
         if (silenceOpts) {
           const silenceDurationMs = silenceOpts.silenceDurationMs ?? 1500;
-          const amplitudeThreshold = silenceOpts.amplitudeThreshold ?? 0.024;
-          const minRecordingMs = silenceOpts.minRecordingMs ?? 600;
+          const amplitudeThreshold = silenceOpts.amplitudeThreshold ?? 0.014;
+          const minRecordingMs = silenceOpts.minRecordingMs ?? 500;
           const { onComplete } = silenceOpts;
 
           const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -194,7 +207,15 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
                 /* ignore */
               }
               silenceAudioContextRef.current = null;
-              void stopRecording().then(onComplete);
+              void stopRecording()
+                .then(async blob => {
+                  try {
+                    await onComplete(blob);
+                  } catch (e) {
+                    console.error('autoStopOnSilence onComplete error:', e);
+                  }
+                })
+                .catch(e => console.error('stopRecording error:', e));
               return;
             }
 

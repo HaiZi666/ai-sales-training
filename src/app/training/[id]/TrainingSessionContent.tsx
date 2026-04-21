@@ -46,6 +46,7 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
   useEffect(() => {
     const firstQuestion = searchParams.get('firstQuestion') || '';
     const firstQuestionId = searchParams.get('firstQuestionId') || '';
+    const firstStandardAnswer = searchParams.get('firstStandardAnswer') || '';
     const label = searchParams.get('questionTypeLabel') || '基础知识闯关练';
     const total = parseInt(searchParams.get('totalQuestions') || '0', 10);
     const opening = searchParams.get('openingMessage') || '';
@@ -53,6 +54,7 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
     setQuestionTypeLabel(label);
     setCurrentQuestion(firstQuestion);
     setCurrentQuestionId(firstQuestionId);
+    setCurrentStandardAnswer(firstStandardAnswer);
     setTotalQuestions(total);
     setAskedCount(firstQuestion ? 1 : 0);
     setOpeningMessage(opening);

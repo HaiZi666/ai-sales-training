@@ -121,7 +121,12 @@ function readQuestionsFromExcel(questionType: QuestionType): TrainingQuestion[] 
         scenario: (row['场景类型'] || '通用').trim(),
         node: (row['节点'] || '通用').trim(),
       }))
-      .filter(q => q.question.length > 0);
+      .filter(q => {
+        if (q.question.length === 0) return false;
+        // 误把第二行再写一遍表头时，整行等于列名，不作为题目
+        if (q.question === questionCol && q.standardAnswer === answerCol) return false;
+        return true;
+      });
 
     console.log(`[TrainingStore] Loaded ${questions.length} questions for ${questionType}`);
     return questions;

@@ -51,6 +51,14 @@ export async function textToSpeech(
   }
 }
 
+function sttFilenameForBlob(blob: Blob): string {
+  const t = (blob.type || '').toLowerCase();
+  if (t.includes('webm')) return 'audio.webm';
+  if (t.includes('mp4') || t.includes('m4a') || t.includes('aac')) return 'audio.mp4';
+  if (t.includes('ogg')) return 'audio.ogg';
+  return 'audio.webm';
+}
+
 // STT语音识别 - 将音频文件发送到服务器转文字
 export async function speechToText(
   audioBlob: Blob
@@ -62,8 +70,11 @@ export async function speechToText(
 
   try {
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.mp3');
+    formData.append('file', audioBlob, sttFilenameForBlob(audioBlob));
     formData.append('model', 'speech-01');
+    if (MINIMAX_GROUP_ID) {
+      formData.append('group_id', MINIMAX_GROUP_ID);
+    }
 
     const response = await fetch(`${MINIMAX_BASE_URL}/audio/transcriptions`, {
       method: 'POST',
@@ -77,8 +88,12 @@ export async function speechToText(
       throw new Error(`STT API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data.text || '';
+    const data = (await response.json()) as { text?: string; result?: string };
+    return (
+      (typeof data.text === 'string' && data.text) ||
+      (typeof data.result === 'string' && data.result) ||
+      ''
+    );
   } catch (error) {
     console.error('STT error:', error);
     return '';

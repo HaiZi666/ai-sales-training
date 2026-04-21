@@ -54,6 +54,7 @@ export default function TrainingPage() {
         const params = new URLSearchParams({
           firstQuestion: data.firstQuestion || '',
           firstQuestionId: data.firstQuestionId || '',
+          firstStandardAnswer: data.firstStandardAnswer || '',
           questionTypeLabel: data.questionTypeName || data.questionTypeLabel || '',
           totalQuestions: String(data.totalQuestions || 0),
           openingMessage: data.openingMessage || '',

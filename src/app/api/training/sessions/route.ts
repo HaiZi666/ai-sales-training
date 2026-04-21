@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
       openingMessage,
       firstQuestion: firstQuestion.question,
       firstQuestionId: firstQuestion.id,
+      /** 供前端首题本地评分；勿依赖 URL 时可改由 GET 会话拉取 */
+      firstStandardAnswer: firstQuestion.standardAnswer || '',
     });
   } catch (error) {
     console.error('创建培训会话失败:', error);
