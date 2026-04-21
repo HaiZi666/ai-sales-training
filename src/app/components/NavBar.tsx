@@ -21,13 +21,13 @@ export default function NavBar() {
               href="/practice/new"
               className="text-gray-600 hover:text-gray-900 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
             >
-              新建
+              新建演练
             </Link>
             <Link
               href="/history"
               className="text-gray-600 hover:text-gray-900 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
             >
-              历史
+              演练历史
             </Link>
           </div>
         </div>

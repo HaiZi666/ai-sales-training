@@ -34,7 +34,7 @@ export default function MobileBottomNav() {
         </Link>
         <Link href="/history" className={`flex flex-col items-center gap-1 ${isHistory ? active : inactive}`}>
           <span className="text-xl">📝</span>
-          <span className="text-xs">历史</span>
+          <span className="text-xs">演练历史</span>
         </Link>
       </div>
     </div>
