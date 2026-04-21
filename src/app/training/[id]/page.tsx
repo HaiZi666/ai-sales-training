@@ -327,6 +327,17 @@ export default function TrainingSessionPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
 
+              {/* 评分标准说明 */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mb-5">
+                <span className="font-medium text-green-600">9 分</span><span>要点齐全</span>
+                <span className="text-gray-300">·</span>
+                <span className="font-medium text-blue-600">7 分</span><span>基本正确</span>
+                <span className="text-gray-300">·</span>
+                <span className="font-medium text-yellow-600">5 分</span><span>部分正确</span>
+                <span className="text-gray-300">·</span>
+                <span className="font-medium text-red-500">3 分</span><span>偏离要点</span>
+              </div>
+
               {/* 逐题得分 */}
               <h4 className="font-semibold text-gray-700 mb-3">逐题得分</h4>
               <div className="space-y-3 mb-5">

@@ -11,7 +11,6 @@ const QUESTION_TYPES: {
   emoji: string;
   label: string;
   desc: string;
-  topics: string[];
   color: string;
   bgColor: string;
   borderColor: string;
@@ -21,7 +20,6 @@ const QUESTION_TYPES: {
     emoji: '💬',
     label: '销售常见问题',
     desc: '测试你对常见销售场景的处理能力',
-    topics: ['陌生客户开场话术', '价格异议应对', '家长犹豫处理', '竞品对比应对', '邀约到店技巧'],
     color: 'text-blue-700',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-500',
@@ -31,7 +29,6 @@ const QUESTION_TYPES: {
     emoji: '📚',
     label: '产品基础知识',
     desc: '测试你对机构产品和课程体系的掌握',
-    topics: ['课程体系介绍', '机构核心优势', '分层教学方案', '教学模式讲解', '收费与政策说明'],
     color: 'text-purple-700',
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-500',
@@ -95,12 +92,6 @@ export default function TrainingPage() {
             <ul className="text-sm text-gray-600 space-y-1.5">
               <li>• 题库题目<span className="font-medium text-indigo-600">随机顺序</span>逐题出完，答完为止</li>
               <li>• 每道题满分 <span className="font-medium text-indigo-600">10 分</span>，完成所有题目后统一评分</li>
-              <li>• 评分基于关键词匹配：
-                <span className="font-medium text-green-600"> 9 分</span>（要点齐全）·
-                <span className="font-medium text-blue-600"> 7 分</span>（基本正确）·
-                <span className="font-medium text-yellow-600"> 5 分</span>（部分正确）·
-                <span className="font-medium text-red-500"> 3 分</span>（偏离要点）
-              </li>
               <li>• 结束后展示总分、等级（A–E）及每题参考答案</li>
             </ul>
           </div>
@@ -135,19 +126,7 @@ export default function TrainingPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-500 text-sm mb-3">{type.desc}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {type.topics.map((topic, i) => (
-                      <span
-                        key={i}
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          selected === type.value ? `${type.bgColor} ${type.color}` : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {topic}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-gray-500 text-sm">{type.desc}</p>
                 </div>
               </div>
             </button>
@@ -164,7 +143,7 @@ export default function TrainingPage() {
               : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-lg shadow-indigo-200'
           }`}
         >
-          {isStarting ? '正在启动...' : selected ? `开始${QUESTION_TYPES.find(t => t.value === selected)?.label}培训` : '请先选择题型'}
+          {isStarting ? '正在启动...' : '开始练习'}
         </button>
       </div>
 
