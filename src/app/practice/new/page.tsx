@@ -94,14 +94,14 @@ CHANNELS.forEach(ch => {
 });
 
 // 配置选项
-const VOICE_MODES: { value: VoiceMode; label: string; emoji: string; desc: string }[] = [
-  { value: 'text', label: '文字模式', emoji: '💬', desc: '输入文字进行对话' },
-  { value: 'voice', label: '语音模式', emoji: '🎤', desc: '语音对话，AI语音回复' },
+const VOICE_MODES: { value: VoiceMode; label: string; emoji: string }[] = [
+  { value: 'text', label: '文字模式', emoji: '💬' },
+  { value: 'voice', label: '语音模式', emoji: '🎤' },
 ];
 
-const CUSTOMER_CHANNELS: { value: CustomerChannel; label: string; emoji: string; desc: string }[] = [
-  { value: 'direct_push', label: '地推', emoji: '📍', desc: '线下地推客户' },
-  { value: 'whitelist', label: '白名单', emoji: '⭐', desc: '白名单客户' },
+const CUSTOMER_CHANNELS: { value: CustomerChannel; label: string }[] = [
+  { value: 'direct_push', label: '线下地推客户'},
+  { value: 'whitelist', label: '陌生拜访客户' },
 ];
 
 const EXAM_NODES: ExamNode[] = ['开学考', '月考', '期中考', '期末考', '寒暑假'];
@@ -202,8 +202,6 @@ export default function NewPracticePage() {
         : 'border-gray-200 hover:border-gray-300 bg-white'
     }`;
 
-  const profileConfig = form.customerProfile ? CUSTOMER_PROFILE_CONFIG[form.customerProfile] : null;
-
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
       <div className="max-w-2xl mx-auto">
@@ -230,7 +228,6 @@ export default function NewPracticePage() {
               >
                 <div className="text-2xl mb-2">{mode.emoji}</div>
                 <div className="font-medium">{mode.label}</div>
-                <div className="text-gray-500 text-sm mt-1">{mode.desc}</div>
               </button>
             ))}
           </div>
@@ -247,109 +244,68 @@ export default function NewPracticePage() {
                 onClick={() => handleStepChange('customerChannel', ch.value)}
                 className={cardClass(form.customerChannel === ch.value)}
               >
-                <div className="text-2xl mb-2">{ch.emoji}</div>
                 <div className="font-medium">{ch.label}</div>
-                <div className="text-gray-500 text-sm mt-1">{ch.desc}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Step 3: 选择考试节点 */}
+        {/* Step 3: 选择客户画像（考试节点 + 年级 + 成绩） */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">3. 选择考试节点</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {EXAM_NODES.map(node => (
-              <button
-                key={node}
-                type="button"
-                onClick={() => updateForm('examNode', node)}
-                className={cardClass(form.examNode === node)}
-              >
-                {node}
-              </button>
-            ))}
-          </div>
-        </div>
+          <h2 className="text-lg font-semibold mb-5">3. 选择客户画像</h2>
 
-        {/* Step 4: 选择年级 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">4. 选择年级</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {GRADES.map(grade => (
-              <button
-                key={grade}
-                type="button"
-                onClick={() => handleStepChange('grade', grade)}
-                className={cardClass(form.grade === grade)}
-              >
-                {grade}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Step 5: 选择成绩 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">5. 选择成绩</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {SCORE_LEVELS.map(score => (
-              <button
-                key={score}
-                type="button"
-                onClick={() => handleStepChange('scoreLevel', score)}
-                className={cardClass(form.scoreLevel === score)}
-              >
-                {score}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Step 6: 选择客户画像（根据前面选项自动匹配） */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">6. 选择客户画像</h2>
-          
-          {profileConfig ? (
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-full">
-                    {profileConfig.name}
-                  </span>
-                  <span className="text-gray-600 text-sm">{profileConfig.desc}</span>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs text-gray-500">核心特点：</span>
-                    <p className="text-sm text-gray-700">{profileConfig.traits}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500">常问问题：</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {profileConfig.typicalQuestions.map((q, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
-                          {q}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500">话术要点：</span>
-                    <p className="text-sm text-gray-700">{profileConfig.scriptTip}</p>
-                  </div>
-                </div>
+          <div className="space-y-5 divide-y divide-gray-100 [&>*]:pt-5 first:[&>*]:pt-0">
+            {/* 考试节点 */}
+            <div>
+              <p className="text-base font-semibold text-gray-800 mb-2">📅 考试节点</p>
+              <div className="grid grid-cols-3 gap-3">
+                {EXAM_NODES.map(node => (
+                  <button
+                    key={node}
+                    type="button"
+                    onClick={() => updateForm('examNode', node)}
+                    className={cardClass(form.examNode === node)}
+                  >
+                    {node}
+                  </button>
+                ))}
               </div>
-              <p className="text-gray-500 text-sm">
-                💡 根据您选择的客户类型、年级和成绩自动匹配
-              </p>
             </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <p>请先选择客户类型、年级和成绩</p>
-              <p className="text-sm mt-1">客户画像将自动匹配</p>
+
+            {/* 年级 */}
+            <div>
+              <p className="text-base font-semibold text-gray-800 mb-2">🎓 年级</p>
+              <div className="grid grid-cols-3 gap-3">
+                {GRADES.map(grade => (
+                  <button
+                    key={grade}
+                    type="button"
+                    onClick={() => handleStepChange('grade', grade)}
+                    className={cardClass(form.grade === grade)}
+                  >
+                    {grade}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* 成绩 */}
+            <div>
+              <p className="text-base font-semibold text-gray-800 mb-2">📊 成绩</p>
+              <div className="grid grid-cols-3 gap-3">
+                {SCORE_LEVELS.map(score => (
+                  <button
+                    key={score}
+                    type="button"
+                    onClick={() => handleStepChange('scoreLevel', score)}
+                    className={cardClass(form.scoreLevel === score)}
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 开始按钮 */}
