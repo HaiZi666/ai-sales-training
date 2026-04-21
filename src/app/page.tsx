@@ -39,7 +39,7 @@ export default function Home() {
             </p>
           </Link>
           <Link
-            href='http://10.200.0.55:8090/upload'
+            href='http://10.200.0.62:8090/upload'
             className="bg-white rounded-2xl shadow-sm p-5"
           >
             <div className="text-2xl mb-3">🎤</div>
