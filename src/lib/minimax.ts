@@ -93,7 +93,7 @@ export async function generateAIResponse(
 ): Promise<string> {
   if (!MINIMAX_API_KEY) {
     // Demo模式 - 返回模拟回复
-    return generateDemoResponse(conversationHistory[conversationHistory.length - 1]?.content || '');
+    return generateDemoResponse(conversationHistory);
   }
 
   // 转换角色：sales->user, ai->assistant (MiniMax只支持这三种角色)
@@ -128,29 +128,52 @@ export async function generateAIResponse(
   return data.choices?.[0]?.message?.content || '';
 }
 
-// Demo模式回复
-function generateDemoResponse(lastMessage: string): string {
-  const demoResponses = [
-    '哦，那孩子这次数学大概多少分？',
-    '我们家孩子确实有点偏科，数学一直不太好。',
-    '那你们这个课是怎么收费的？',
-    '效果怎么样啊？有和我们家孩子情况类似的例子吗？',
-    '那要不我周末带孩子过去看看？',
+// Demo模式回复（按对话轮次模拟真实家长节奏）
+function generateDemoResponse(history: { role: string; content: string }[]): string {
+  const lastMessage = (history[history.length - 1]?.content || '').toLowerCase();
+  // 销售发出的轮数（history 中 role=sales 的数量）
+  const salesTurns = history.filter(m => m.role === 'sales').length;
+
+  // 第1轮：只做身份确认，绝不涉及孩子/课程
+  if (salesTurns <= 1) {
+    return '你好，你是哪位啊？';
+  }
+
+  // 第2轮：了解来意
+  if (salesTurns === 2) {
+    return '哦，教育机构啊，你们主要做什么辅导的？';
+  }
+
+  // 第3轮：开始了解机构
+  if (salesTurns === 3) {
+    return '嗯，那你先简单说说你们的课程是怎么安排的？';
+  }
+
+  // 中期：根据销售说的内容自然回应
+  if (lastMessage.includes('分数') || lastMessage.includes('成绩')) {
+    return '孩子成绩就是中等吧，想再提提，但也没特别急。';
+  }
+  if (lastMessage.includes('时间') || lastMessage.includes('过来') || lastMessage.includes('来看看')) {
+    return '时间不一定，我要看看我们的安排，不一定能去。';
+  }
+  if (lastMessage.includes('例子') || lastMessage.includes('案例')) {
+    return '有没有跟我家孩子情况差不多的？成绩一般那种。';
+  }
+  if (lastMessage.includes('老师') || lastMessage.includes('教师')) {
+    return '老师是固定的还是会换人啊？';
+  }
+  if (lastMessage.includes('价格') || lastMessage.includes('收费') || lastMessage.includes('费用')) {
+    return '大概怎么收费的，能说说吗？';
+  }
+
+  // 后期默认：保持谨慎，不轻易表态
+  const lateResponses = [
+    '嗯，那我先了解了解，还没想好要不要报。',
+    '这样啊，我考虑一下，跟家里人商量商量。',
+    '那孩子那边还得看他自己愿不愿意。',
+    '还要再对比一下别家，你们有什么优势？',
   ];
-  
-  // 根据上一轮内容选择合适的回复
-  const msg = lastMessage.toLowerCase();
-  if (msg.includes('分数') || msg.includes('成绩')) {
-    return '这次期中考试数学考了72分，班级中等吧。';
-  }
-  if (msg.includes('时间') || msg.includes('来')) {
-    return '周末的话，周日下午两点应该可以。';
-  }
-  if (msg.includes('例子') || msg.includes('案例')) {
-    return '还真有，我们邻居家孩子也是数学不好，后来在你们这学了两个月，提了20多分。';
-  }
-  
-  return demoResponses[Math.floor(Math.random() * demoResponses.length)];
+  return lateResponses[salesTurns % lateResponses.length];
 }
 
 // 评分生成

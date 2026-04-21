@@ -119,21 +119,20 @@ function buildFAQContext(): string {
   const scenarios = getAllScenarios();
   
   let context = `
-# 家长常见问题库
-
-以下是家长可能会问的问题，按场景分类。你需要根据销售说的话：
-1. 选择合适的回应
-2. 选择1个追问
-
-## 各场景问题列表
+【参考资料：家长在不同阶段可能涉及的话题】
+以下仅供参考，绝不是让你照单全问。
+使用规则：
+- 对话初期（前2-3轮）：不得使用任何以下问题，只做身份确认/来意询问。
+- 对话中后期（了解机构背景后）：可根据对话节奏自然带出其中1个，而非连续追问。
+- 这些问题是"可能的方向"，不是"必须问的清单"。
 
 `;
 
   for (const scenario of scenarios) {
     const items = faqs.filter(f => f.scenario === scenario);
-    context += `### ${scenario}\n`;
+    context += `【${scenario}阶段参考话题】\n`;
     for (const item of items) {
-      context += `- "${item.question}"（回答参考：${item.answer}）\n`;
+      context += `- ${item.question}\n`;
     }
     context += '\n';
   }
