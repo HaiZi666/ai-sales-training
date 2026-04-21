@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createTrainingSession, addTrainingMessage, markQuestionAsked, getQuestionTypeName, QuestionType } from '@/lib/trainingStore';
+import { createTrainingSession, addTrainingMessage, getQuestionTypeName, QuestionType } from '@/lib/trainingStore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,15 +25,16 @@ export async function POST(request: NextRequest) {
     const openingMessage = `接下来对您进行${questionTypeName}培训，请直接作答。`;
     addTrainingMessage(session.id, 'ai', openingMessage);
 
-    // 正确标记第1题为已出题（会持久化到文件）
-    markQuestionAsked(session.id, firstQuestion.id);
+    // 不在此处 mark 第一题：否则「已问题数」在尚未作答时就被算入，
+    // 单题题库会在创建瞬间被标为 finished，用户第一次提交即 400。
+    // 第一题仅在用户首次 POST /message 作答后由 markQuestionAsked 记入。
 
     return NextResponse.json({
       sessionId: session.id,
       questionType,
       questionTypeName,
       totalQuestions: session.questions.length,
-      currentQuestionIndex: 1,
+      currentQuestionIndex: 0,
       openingMessage,
       firstQuestion: firstQuestion.question,
       firstQuestionId: firstQuestion.id,

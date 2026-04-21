@@ -61,6 +61,8 @@ export async function POST(
       currentStandardAnswer: currentQuestion.standardAnswer,
       nextQuestion: nextQuestion?.question || null,
       nextQuestionId: nextQuestion?.id || null,
+      /** 下一题的标准答案，供客户端展示评分要点（与 currentStandardAnswer 区分） */
+      nextStandardAnswer: nextQuestion?.standardAnswer ?? null,
       totalQuestions: session.questions.length,
       askedCount: session.askedQuestionIds.length,
       isFinished,

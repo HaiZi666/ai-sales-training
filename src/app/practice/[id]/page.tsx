@@ -61,12 +61,16 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   const inputRef = useRef<HTMLInputElement>(null);
   /** 静音自动结束录音时，回调可能在数秒后执行，需始终调用最新的发送逻辑 */
   const handleSendRef = useRef<(textToSend?: string) => Promise<void>>(async () => {});
+  const sessionIdRef = useRef<string | null>(null);
 
   const voice = useVoiceRecording();
+  const [voiceTranscribeHint, setVoiceTranscribeHint] = useState<string | null>(null);
 
   useEffect(() => {
     params.then(p => setSessionId(p.id));
   }, [params]);
+
+  sessionIdRef.current = sessionId;
 
   // 初始化会话
   useEffect(() => {
@@ -225,42 +229,67 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
   handleSendRef.current = handleSend;
 
-  const handleRecordingComplete = async () => {
-    const blob = await voice.stopRecording();
-    if (blob && sessionId) {
-      const text = await transcribeAudio(blob);
-      if (text) {
-        await handleSendRef.current(text);
-      }
-    }
-  };
-
-  const transcribeAudio = async (blob: Blob): Promise<string> => {
+  const transcribeAudio = async (blob: Blob): Promise<{ text: string; error?: string }> => {
     try {
       const form = new FormData();
       form.append('audio', blob, 'recording');
       const res = await fetch('/api/speech-to-text', { method: 'POST', body: form });
-      if (!res.ok) return '';
-      const data = await res.json();
-      return data.text || '';
+      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      if (!res.ok) {
+        return {
+          text: '',
+          error: data.error || (res.status === 422 ? '未识别到文字，请再说一次' : `识别失败（${res.status}）`),
+        };
+      }
+      return { text: (data.text || '').trim() };
     } catch {
-      return '';
+      return { text: '', error: '网络异常，识别失败' };
     }
+  };
+
+  /** 录音 Blob → 转写 → 发送（手动停止与静音自动停止共用） */
+  const processVoiceBlob = async (blob: Blob | null) => {
+    setVoiceTranscribeHint(null);
+    if (!sessionIdRef.current) {
+      setVoiceTranscribeHint('会话未就绪，请稍后再试');
+      return;
+    }
+    if (!blob) {
+      setVoiceTranscribeHint('未获取到录音，请重试');
+      return;
+    }
+    if (blob.size === 0) {
+      setVoiceTranscribeHint('录音数据为空，请重试');
+      return;
+    }
+    const { text, error } = await transcribeAudio(blob);
+    if (error) {
+      setVoiceTranscribeHint(error);
+      return;
+    }
+    if (!text) {
+      setVoiceTranscribeHint('未识别到文字，请再说一次或使用文字输入');
+      return;
+    }
+    await handleSendRef.current(text);
+  };
+
+  const handleRecordingComplete = async () => {
+    const blob = await voice.stopRecording();
+    await processVoiceBlob(blob);
   };
 
   const handleVoiceButton = async () => {
     if (voice.isRecording) {
       await handleRecordingComplete();
     } else {
+      setVoiceTranscribeHint(null);
       await voice.startRecording({
         autoStopOnSilence: {
-          onComplete: async (blob) => {
-            if (!blob || !sessionId) return;
-            const text = await transcribeAudio(blob);
-            if (text) {
-              await handleSendRef.current(text);
-            }
-          },
+          silenceDurationMs: 1400,
+          amplitudeThreshold: 0.014,
+          minRecordingMs: 500,
+          onComplete: blob => processVoiceBlob(blob),
         },
       });
     }
@@ -410,6 +439,11 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
       {voice.error && (
         <div className="mx-4 mb-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {voice.error}
+        </div>
+      )}
+      {voiceTranscribeHint && (
+        <div className="mx-4 mb-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+          {voiceTranscribeHint}
         </div>
       )}
 
