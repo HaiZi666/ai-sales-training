@@ -647,11 +647,16 @@ export function buildComprehensiveScoringPrompt(
   customerType: string,
   customerScore: string,
   customerSubject: string,
-  parentType?: ParentType
+  parentType?: ParentType,
+  externalRubric?: string
 ): string {
   const parentTypeLine = parentType && PARENT_TYPE_BEHAVIOR[parentType]
     ? `家长心理类型：${PARENT_TYPE_BEHAVIOR[parentType].label}。${PARENT_TYPE_BEHAVIOR[parentType].summary} 重点关注：${PARENT_TYPE_BEHAVIOR[parentType].concernFocus} 决策节奏：${PARENT_TYPE_BEHAVIOR[parentType].decisionStyle}（请结合该家长类型评估销售话术是否切中其关切与反应模式）`
     : '家长心理类型：未指定（仅按客户类型与成绩画像评估）';
+
+  const externalRubricSection = externalRubric
+    ? `\n## 外部评分规则（优先参考）\n以下内容来自外部提示词服务，请优先依据这些规则理解“什么算说到点上、什么算高分、什么建议更贴近真实销售场景”。\n你不需要照搬外部接口原始输出格式，但必须吸收其中的评分口径、宽松给分原则、关注重点和建议风格，再把结果转换为本系统要求的 JSON 输出。\n\n${externalRubric}\n`
+    : '';
 
   return `你是销售话术评分专家。请根据完整对话记录，对课程顾问（销售）的整个销售过程进行多维度专业评分。
 
@@ -664,6 +669,7 @@ ${conversationHistory.map((m, i) => `${i + 1}. [${m.role === 'sales' ? '销售' 
 - 弱科：${customerSubject}
 - 家长特点：${customerType === 'type_a' ? '理性谨慎、货比三家' : customerType === 'type_b' ? '犹豫不决、看重案例' : '焦虑敏感、担心效果'}
 - ${parentTypeLine}
+${externalRubricSection}
 
 ## 评分维度（每个维度都要评分）
 
@@ -675,6 +681,12 @@ ${conversationHistory.map((m, i) => `${i + 1}. [${m.role === 'sales' ? '销售' 
 | 举例 | 20分 | 真实案例、变化过程、成绩匹配 |
 | 给方案 | 15分 | 可行性方案、产品结合、再次邀约 |
 | 邀约确认 | 10分 | 具体时间、位置发送、预约确认 |
+
+## 评分口径要求
+1. 若提供了“外部评分规则”，优先按其口径理解本场对话表现，尤其是给分松紧、真实销售场景容错、建议风格。
+2. 但最终必须映射回本系统的 6 个维度，并输出下方指定 JSON。
+3. 不要因为销售话术与参考话术措辞不同就机械扣分；只要表达到位、含义覆盖，就应给到相应分数。
+4. 字段 detail、highlight、weakness、improvements 要结合当前家长类型来写，评价必须像在点评这次真实对话，而不是泛泛总结。
 
 ## 输出要求
 严格按以下JSON格式输出，对每个维度都要评分：
