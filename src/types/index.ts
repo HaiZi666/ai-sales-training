@@ -1,3 +1,12 @@
+// 家长心理类型（与成绩画像独立，控制沟通风格与反应）
+export type ParentType =
+  | 'anxiety'
+  | 'rational'
+  | 'price_sensitive'
+  | 'controlling'
+  | 'busy'
+  | 'cautious';
+
 // 客户类型
 export type CustomerType = 'type_a' | 'type_b' | 'type_c';
 
@@ -77,6 +86,8 @@ export interface Session {
   customerChannel?: 'direct_push' | 'whitelist';
   examNode?: '开学考' | '月考' | '期中考' | '期末考' | '寒暑假';
   grade?: '初一' | '初二' | '初三' | '高一' | '高二' | '高三';
+  /** 家长心理/沟通风格（与 customerType 成绩画像叠加） */
+  parentType?: ParentType;
 }
 
 // 评分配置

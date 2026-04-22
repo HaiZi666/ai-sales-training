@@ -26,7 +26,8 @@ export async function GET(
       conversationHistory,
       session.customerType,
       session.customerScore,
-      session.customerSubject
+      session.customerSubject,
+      session.parentType
     );
 
     let report;

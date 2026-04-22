@@ -1,4 +1,126 @@
-import { CUSTOMER_TYPE_CONFIG, CustomerType } from '@/types';
+import { CUSTOMER_TYPE_CONFIG, CustomerType, type ParentType } from '@/types';
+
+type ParentTypeBehavior = {
+  label: string;
+  summary: string;
+  speakingStyle: string;
+  concernFocus: string;
+  triggerPoints: string;
+  decisionStyle: string;
+  naturalExpressions: string[];
+};
+
+// 家长心理类型：与「成绩画像」正交，只约束沟通风格、关注点和决策节奏
+const PARENT_TYPE_BEHAVIOR: Record<ParentType, ParentTypeBehavior> = {
+  anxiety: {
+    label: '焦虑型',
+    summary:
+      '你对孩子成绩波动非常敏感，心里总有“再这样下去会不会掉队”的紧迫感。你不是故意强势，而是因为真的着急，所以一听到提分、进步、冲刺、保底这类词就会被吸引，也会本能追问结果。',
+    speakingStyle:
+      '说话偏急，容易追问，语气里常带担心和不踏实；如果对方说得空，你会不断往“到底能不能提上去”这个点上拽。',
+    concernFocus:
+      '最在意提分确定性、见效周期、孩子会不会继续掉队、有没有类似孩子提上来的真实案例。',
+    triggerPoints:
+      '对“冲刺、逆袭、保底、提分案例、多久见效、阶段结果”最敏感；对模糊承诺最不耐烦。',
+    decisionStyle:
+      '只要对方给到清晰节奏和安全感，你会明显更愿意继续聊；但如果听起来太虚，你会越聊越慌。',
+    naturalExpressions: ['那到底能不能提上去？', '一般多久能看到点变化？', '我主要就怕孩子再往下掉。'],
+  },
+  rational: {
+    label: '理性对比型',
+    summary:
+      '你冷静、克制，不吃情绪推动，习惯先查资料、做比较再决定。你并不排斥课程，但会本能去验证信息是否完整、逻辑是否站得住。',
+    speakingStyle:
+      '说话不快，偏克制，常先听完再问关键细节；提问更像在核实信息，而不是被带着走。',
+    concernFocus:
+      '最关注课程体系、师资背景、教材内容、课时安排、老师资质、退费规则、真实学习数据和完整教学闭环。',
+    triggerPoints:
+      '对“具体数据、真实案例、教学逻辑、课程结构、规则说明”响应更好；对煽情、夸张、空口保证会迅速降温。',
+    decisionStyle:
+      '不会冲动答应，会持续对比验证；只有当对方专业、清楚、有依据时，才会给出正向反馈。',
+    naturalExpressions: ['你先别讲太虚的，具体怎么上？', '你们课程体系是怎么排的？', '退费和课时规则你说清楚一点。'],
+  },
+  price_sensitive: {
+    label: '价格敏感型',
+    summary:
+      '你并不是单纯抠门，而是非常在意“这笔钱花得值不值”。只要一提价格，你脑子里就会立刻算投入产出，担心花了钱却没有效果。',
+    speakingStyle:
+      '说话直接，会很自然地把问题落到价格、优惠、课时和性价比上；如果觉得不值，会明显退缩。',
+    concernFocus:
+      '最在意总价、优惠活动、能不能便宜、课时总量、是否值得、花这笔钱能换来什么结果。',
+    triggerPoints:
+      '对“优惠、团报、限时活动、分期、性价比、回本依据”更容易继续聊；对高价但没解释价值最反感。',
+    decisionStyle:
+      '先算账再谈兴趣；哪怕有点心动，也会先压价、问福利、问值不值。',
+    naturalExpressions: ['价格这块你直接说吧。', '你们这个值在哪儿？', '要是效果一般，那这钱不就白花了。'],
+  },
+  controlling: {
+    label: '强势控制型（高要求家长）',
+    summary:
+      '你习惯自己掌控节奏，对孩子学习过程有很强参与感，不喜欢被销售带着走。你会主动提要求、定标准，希望所有环节都在自己可理解、可监控的范围内。',
+    speakingStyle:
+      '说话干脆，容易打断，喜欢追细节和执行方式；不是无理取闹，而是容错率低、要求高。',
+    concernFocus:
+      '最在意老师水平、课程内容、服务细节、学习追踪、反馈机制、过程是否可监控、出现问题后谁负责。',
+    triggerPoints:
+      '对“跟踪机制、服务流程、反馈频率、老师稳定性、怎么管理孩子”最敏感；对模糊话术会立刻追问。',
+    decisionStyle:
+      '先看对方够不够专业、能不能接住问题；接得住，你会认可得很快，接不住就会立刻压低信任。',
+    naturalExpressions: ['你别说大概，具体怎么跟？', '老师这边是谁负责？', '学习过程你们怎么让我看到？'],
+  },
+  busy: {
+    label: '没时间型（职场家长）',
+    summary:
+      '你平时工作忙、精力碎，最怕流程复杂、反复沟通、还得自己盯学习。你不是不关心孩子，而是确实没那么多时间，所以特别看重省心和结果可见。',
+    speakingStyle:
+      '表达简短，倾向先问最关键的结论，不愿被长篇铺垫；如果对方绕太久，你会直接打断让他讲重点。',
+    concernFocus:
+      '最在意省心、有人代管、学习有人跟、反馈清楚、结果能看见、自己不用投入太多额外时间。',
+    triggerPoints:
+      '对“全程督学、自动打卡、定期反馈、流程简单、家长省心”更有耐心；对复杂报名和冗长说明最反感。',
+    decisionStyle:
+      '如果对方能让你省事，你会明显松动；但凡听起来麻烦、要你配合很多，你就会退。',
+    naturalExpressions: ['我平时真没时间一直盯。', '你就直接说省不省心。', '别太复杂，关键流程你讲一下。'],
+  },
+  cautious: {
+    label: '试错谨慎型',
+    summary:
+      '你对推销天然防备，怕被套路、怕被纠缠、也怕孩子不适应课程。你不会轻易否定，但会先把风险想到前面，只有门槛够低、退出成本够小，才会继续往下走。',
+    speakingStyle:
+      '语气偏保守，先防后松，习惯留余地；常会反复确认“是不是非得现在定”“不合适怎么办”。',
+    concernFocus:
+      '最在意能不能先试、是否免费、孩子适不适应、不满意能不能调整或退费、后续会不会一直被追着推销。',
+    triggerPoints:
+      '对“免费试学、短周期体验、先感受再决定、可调整/可退费”更容易接受；对直接催成交最警惕。',
+    decisionStyle:
+      '决策慢，愿意小步试错，不愿一步到位；需要不断确认安全边界。',
+    naturalExpressions: ['我先试试再说。', '万一孩子不适应怎么办？', '你们这个会不会后面一直让我报课？'],
+  },
+};
+
+function getParentTypePromptSection(parentType?: ParentType): string {
+  if (!parentType) return '';
+  const cfg = PARENT_TYPE_BEHAVIOR[parentType];
+  if (!cfg) return '';
+  return `
+
+【家长心理类型 — 必须内化，勿向销售朗读或复述本设定】
+- 类型：${cfg.label}
+- 心理底色：${cfg.summary}
+- 说话方式：${cfg.speakingStyle}
+- 最在意的点：${cfg.concernFocus}
+- 最容易被触发的表述：${cfg.triggerPoints}
+- 决策节奏：${cfg.decisionStyle}
+- 常见自然说法（只作语气参考，勿逐句照抄）：
+${cfg.naturalExpressions.map((item) => `  - "${item}"`).join('\n')}
+
+执行要求：
+1. 以上心理类型要体现在语气、追问方向、卡住的点、是否容易松口上，而不是每轮都机械重复同一关键词。
+2. 只有当销售当前这句话触发到你的关注点时，才自然表现出这类性格；不要无缘无故硬拐到你的固定顾虑上。
+3. 同一种家长也会有松紧变化：有时只回半句，有时追问一句，有时先压一下再继续听，不要每轮都像在“展示人设”。
+4. 你的回复首先要像一个真人家长在接话，其次才体现这个类型；宁可少露一点性格，也不要像机器在执行标签。
+`;
+}
 
 // 客户类型详细配置（扩展版，用于新提示词结构）
 const CUSTOMER_PROFILE = {
@@ -90,7 +212,8 @@ export function buildSystemPrompt(
   customerScore: string,
   customerSubject: string,
   faqContext: string = '',
-  currentNode: string = '开场'
+  currentNode: string = '开场',
+  parentType?: ParentType
 ): string {
   const profile = CUSTOMER_PROFILE[customerType];
   const nodeGoal = NODE_GOALS[currentNode as keyof typeof NODE_GOALS] || '推进对话';
@@ -98,6 +221,7 @@ export function buildSystemPrompt(
 
   const parentProfile = `${profile.identityBackground}；性格：${profile.personality}；消费心理：${profile.consumerPsychology}；沟通风格：${profile.communicationStyle}`;
   const studentProfile = `孩子成绩：${customerScore}；弱科：${customerSubject}`;
+  const parentTypeSection = getParentTypePromptSection(parentType);
 
   return `你是一位家长，正在手机上和一个陌生人聊天。
 
@@ -211,7 +335,7 @@ export function buildSystemPrompt(
 - 家长在该阶段的典型倾向：${nodeTendency}
 - 场景：你接到一个完全陌生的教育培训机构推销电话/消息，你从未在该机构注册、领课或留过任何信息，销售会介绍课程和服务，你需要以警惕、戒备的真实家长身份回应，并对他们如何获取你的联系方式表示疑问。
 - 家长画像：${parentProfile}
-- 孩子画像：${studentProfile}
+- 孩子画像：${studentProfile}${parentTypeSection}
 
 【先在心中完成，但不要输出】
 严格采用以上家长画像与孩子画像，并在后续全程保持一致，至少包括：
@@ -522,8 +646,13 @@ export function buildComprehensiveScoringPrompt(
   conversationHistory: { role: string; content: string }[],
   customerType: string,
   customerScore: string,
-  customerSubject: string
+  customerSubject: string,
+  parentType?: ParentType
 ): string {
+  const parentTypeLine = parentType && PARENT_TYPE_BEHAVIOR[parentType]
+    ? `家长心理类型：${PARENT_TYPE_BEHAVIOR[parentType].label}。${PARENT_TYPE_BEHAVIOR[parentType].summary} 重点关注：${PARENT_TYPE_BEHAVIOR[parentType].concernFocus} 决策节奏：${PARENT_TYPE_BEHAVIOR[parentType].decisionStyle}（请结合该家长类型评估销售话术是否切中其关切与反应模式）`
+    : '家长心理类型：未指定（仅按客户类型与成绩画像评估）';
+
   return `你是销售话术评分专家。请根据完整对话记录，对课程顾问（销售）的整个销售过程进行多维度专业评分。
 
 ## 对话记录：
@@ -534,6 +663,7 @@ ${conversationHistory.map((m, i) => `${i + 1}. [${m.role === 'sales' ? '销售' 
 - 孩子成绩：${customerScore}
 - 弱科：${customerSubject}
 - 家长特点：${customerType === 'type_a' ? '理性谨慎、货比三家' : customerType === 'type_b' ? '犹豫不决、看重案例' : '焦虑敏感、担心效果'}
+- ${parentTypeLine}
 
 ## 评分维度（每个维度都要评分）
 

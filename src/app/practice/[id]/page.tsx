@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { textToSpeech } from '@/lib/minimax';
-import { SCORING_CONFIG, DialogNode, NODE_ORDER } from '@/types';
+import { SCORING_CONFIG, DialogNode, NODE_ORDER, type ParentType } from '@/types';
 import RealtimeRoom from './RealtimeRoom';
 
 interface Message {
@@ -32,6 +32,7 @@ interface Session {
   currentNode: DialogNode;
   aiOpeningMessage: string;
   aiOpeningAudio?: string;
+  parentType?: ParentType;
 }
 
 type Mode = 'text' | 'voice' | 'realtime';
@@ -90,6 +91,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
             currentNode: data.session.currentNode,
             aiOpeningMessage: data.session.aiOpeningMessage || '',
             aiOpeningAudio: data.session.aiOpeningAudio,
+            parentType: data.session.parentType,
           });
           setCurrentNode(data.session.currentNode);
 
@@ -129,6 +131,34 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
     };
 
     initSession();
+  }, [sessionId, mode]);
+
+  // 实时模式未走上方 initSession，需单独拉取会话元数据（含 parentType）供 RealtimeRoom 使用
+  useEffect(() => {
+    if (!sessionId || mode !== 'realtime') return;
+
+    const loadMeta = async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}`);
+        const data = await res.json();
+        if (!data.session) return;
+        setSession({
+          id: data.session.id,
+          customerType: data.session.customerType,
+          customerScore: data.session.customerScore,
+          customerSubject: data.session.customerSubject,
+          currentNode: data.session.currentNode,
+          aiOpeningMessage: data.session.aiOpeningMessage || '',
+          aiOpeningAudio: data.session.aiOpeningAudio,
+          parentType: data.session.parentType,
+        });
+        setCurrentNode(data.session.currentNode);
+      } catch (e) {
+        console.error('获取会话元数据失败:', e);
+      }
+    };
+
+    loadMeta();
   }, [sessionId, mode]);
 
   useEffect(() => {
@@ -341,6 +371,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
         customerType={session?.customerType || ''}
         customerScore={session?.customerScore || ''}
         customerSubject={session?.customerSubject || ''}
+        parentType={session?.parentType}
         currentNode={currentNode}
         onNodeChange={setCurrentNode}
         onFinish={handleEnd}

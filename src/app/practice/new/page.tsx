@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { ParentType } from '@/types';
 import MobileBottomNav from '@/components/MobileBottomNav';
 
 // 演练模式
@@ -107,6 +108,16 @@ const CUSTOMER_CHANNELS: { value: CustomerChannel; label: string }[] = [
 
 const EXAM_NODES: ExamNode[] = ['开学考', '月考', '期中考', '期末考', '寒暑假'];
 
+// 家长心理类型（与成绩分段独立，用于丰富 AI 家长人设）
+const PARENT_TYPE_OPTIONS: { value: ParentType; label: string }[] = [
+  { value: 'anxiety', label: '焦虑型（最常见）' },
+  { value: 'rational', label: '理性对比型' },
+  { value: 'price_sensitive', label: '价格敏感型' },
+  { value: 'controlling', label: '强势控制型' },
+  { value: 'busy', label: '没时间型（职场家长）' },
+  { value: 'cautious', label: '试错谨慎型' },
+];
+
 interface FormState {
   voiceMode: VoiceMode | null;
   customerChannel: CustomerChannel | null;
@@ -114,6 +125,7 @@ interface FormState {
   grade: Grade | null;
   scoreLevel: ScoreLevel | null;
   customerProfile: CustomerProfile | null;
+  parentType: ParentType | null;
 }
 
 export default function NewPracticePage() {
@@ -125,6 +137,7 @@ export default function NewPracticePage() {
     grade: null,
     scoreLevel: null,
     customerProfile: null,
+    parentType: null,
   });
   const [isCreating, setIsCreating] = useState(false);
 
@@ -180,6 +193,7 @@ export default function NewPracticePage() {
           examNode: form.examNode,
           grade: form.grade,
           customerProfile: form.customerProfile,
+          parentType: form.parentType,
         }),
       });
 
@@ -302,6 +316,23 @@ export default function NewPracticePage() {
                     className={cardClass(form.scoreLevel === score)}
                   >
                     {score}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-base font-semibold text-gray-800 mb-2">👤 家长类型</p>
+              <p className="text-sm text-gray-500 mb-3">决定沟通风格与关注重点，与成绩分段可叠加</p>
+              <div className="grid grid-cols-2 gap-3">
+                {PARENT_TYPE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => updateForm('parentType', opt.value)}
+                    className={cardClass(form.parentType === opt.value)}
+                  >
+                    <span className="text-sm font-medium leading-snug">{opt.label}</span>
                   </button>
                 ))}
               </div>

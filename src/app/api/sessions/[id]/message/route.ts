@@ -47,7 +47,9 @@ export async function POST(
       session.customerType,
       session.customerScore,
       session.customerSubject,
-      faqContext
+      faqContext,
+      '开场',
+      session.parentType
     );
 
     // 评分（简化评分维度）

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSession, getSession, getSessionList } from '@/lib/store';
-import { CUSTOMER_TYPE_CONFIG } from '@/types';
+import { CUSTOMER_TYPE_CONFIG, type ParentType } from '@/types';
 import { textToSpeech } from '@/lib/minimax';
 
 // 创建演练会话
@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       customerChannel,
       examNode,
       grade,
+      parentType,
     } = body;
 
     if (!customerType || !customerScore || !customerSubject) {
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
     if (customerChannel) session.customerChannel = customerChannel;
     if (examNode) session.examNode = examNode;
     if (grade) session.grade = grade;
+    if (parentType) session.parentType = parentType as ParentType;
 
     // 生成AI开场白
     const config = CUSTOMER_TYPE_CONFIG[customerType as keyof typeof CUSTOMER_TYPE_CONFIG];
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
       customerChannel,
       examNode,
       grade,
+      parentType: session.parentType,
     });
   } catch (error) {
     console.error('创建会话失败:', error);

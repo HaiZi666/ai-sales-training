@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MiniMaxRealtimeClient, TextDeltaEvent } from '@/lib/realtime';
 import { textToSpeech } from '@/lib/minimax';
-import { DialogNode, NODE_ORDER } from '@/types';
+import { DialogNode, NODE_ORDER, type ParentType } from '@/types';
 import { buildSystemPrompt, buildNodeFaqContext } from '@/lib/prompts';
 import { getFAQsByScenario } from '@/lib/knowledge';
 
@@ -13,6 +13,7 @@ interface RealtimeRoomProps {
   customerType: string;
   customerScore: string;
   customerSubject: string;
+  parentType?: ParentType;
   currentNode: DialogNode;
   onNodeChange: (node: DialogNode) => void;
   onFinish: () => void;
@@ -24,6 +25,7 @@ export default function RealtimeRoom({
   customerType,
   customerScore,
   customerSubject,
+  parentType,
   currentNode,
   onNodeChange,
   onFinish,
@@ -85,7 +87,8 @@ export default function RealtimeRoom({
         customerScore,
         customerSubject,
         faqContext,
-        currentNode
+        currentNode,
+        parentType
       );
 
       const client = new MiniMaxRealtimeClient({
@@ -129,7 +132,16 @@ export default function RealtimeRoom({
       setError(e.message || 'Connection failed');
       setStatus('error');
     }
-  }, [MINIMAX_API_KEY, customerScore, customerSubject, cleanup, aiText]);
+  }, [
+    MINIMAX_API_KEY,
+    customerType,
+    customerScore,
+    customerSubject,
+    parentType,
+    currentNode,
+    cleanup,
+    aiText,
+  ]);
 
   // 播放 TTS
   const playTTS = async (text: string) => {
