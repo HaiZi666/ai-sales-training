@@ -259,11 +259,24 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
   handleSendRef.current = handleSend;
 
+  /** blob → base64（去掉 data:xxx;base64, 前缀） */
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
   const transcribeAudio = async (blob: Blob): Promise<{ text: string; error?: string }> => {
     try {
-      const form = new FormData();
-      form.append('audio', blob, 'recording');
-      const res = await fetch('/api/speech-to-text', { method: 'POST', body: form });
+      const base64Data = await blobToBase64(blob);
+      const format = blob.type?.includes('mp4') ? 'mp4' : blob.type?.includes('ogg') ? 'ogg' : 'webm';
+      const res = await fetch('/api/speech-to-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: base64Data, format }),
+      });
       const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
       if (!res.ok) {
         return {
