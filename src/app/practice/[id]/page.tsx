@@ -394,8 +394,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
         <div className="flex items-center gap-2">
           {/* 模式切换 */}
           <div className="flex bg-gray-100 rounded-lg p-0.5">
-            {/* ['text', 'voice', 'realtime'] */}
-            {(['text', 'realtime'] as Mode[]).map(m => (
+            {(['text', 'voice', 'realtime'] as Mode[]).map(m => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
