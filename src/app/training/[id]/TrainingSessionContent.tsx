@@ -17,6 +17,8 @@ const RUBRIC_MAX_PER_QUESTION = 9;
 export default function TrainingSessionContent({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const MAX_RECORDING_SECONDS = 180;
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -128,30 +130,64 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
     totalQuestions,
   ]);
 
-  const handleVoiceButton = useCallback(async () => {
-    if (voice.isRecording) {
-      setIsTranscribing(true);
-      const blob = await voice.stopRecording();
-      if (blob) {
-        try {
-          const form = new FormData();
-          form.append('audio', blob, 'recording');
-          const res = await fetch('/api/speech-to-text', { method: 'POST', body: form });
-          if (res.ok) {
-            const { text } = await res.json();
-            if (text?.trim()) {
-              setInputText(text);
-            }
-          }
-        } catch {
-          /* 转写失败时保留手动输入 */
+  /** blob → base64（去掉 data:xxx;base64, 前缀） */
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  /** 从 blob MIME 推断音频格式 */
+  const getAudioFormat = (blob: Blob): string => {
+    const m = blob.type || '';
+    if (m.includes('mp4')) return 'mp4';
+    if (m.includes('ogg')) return 'ogg';
+    if (m.includes('mp3') || m.includes('mpeg')) return 'mp3';
+    return 'webm';
+  };
+
+  /** 录音完成 → base64 → 本地后端转写 → 填入文本框 */
+  const transcribeAndFill = useCallback(async (blob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const base64Data = await blobToBase64(blob);
+      const format = getAudioFormat(blob);
+      const res = await fetch('/api/speech-to-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: base64Data, format }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text?.trim()) {
+          setInputText(data.text);
         }
       }
-      setIsTranscribing(false);
+    } catch {
+      /* 转写失败时保留手动输入 */
+    }
+    setIsTranscribing(false);
+  }, []);
+
+  const handleVoiceButton = useCallback(async () => {
+    if (voice.isRecording) {
+      const blob = await voice.stopRecording();
+      if (blob) await transcribeAndFill(blob);
     } else {
       await voice.startRecording();
     }
-  }, [voice]);
+  }, [voice, transcribeAndFill]);
+
+  /** 录音达到 3 分钟自动停止并转写 */
+  useEffect(() => {
+    if (!voice.isRecording || voice.duration < MAX_RECORDING_SECONDS) return;
+    void (async () => {
+      const blob = await voice.stopRecording();
+      if (blob) await transcribeAndFill(blob);
+    })();
+  }, [voice.isRecording, voice.duration, transcribeAndFill, voice.stopRecording]);
 
   const evaluateAnswer = (userAnswer: string, standardAnswer: string): { score: number; feedback: string } => {
     if (!userAnswer.trim()) {
@@ -406,10 +442,10 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
                   <div className="px-3 pb-3 flex flex-col items-center gap-2 border-t border-gray-200/50 bg-white/50">
                     <p className="text-[11px] text-gray-500 text-center pt-2">
                       {voice.isRecording
-                        ? `录音中 ${voice.duration}s · 再点停止并识别`
+                        ? `录音中 ${voice.duration}s（最长${MAX_RECORDING_SECONDS}s）· 再点停止并识别`
                         : isTranscribing
                         ? '识别中…'
-                        : '点下方麦克风，识别后填入上方'}
+                        : '点下方麦克风录音，识别后填入上方'}
                     </p>
                     {voice.error ? <p className="text-[11px] text-red-500">{voice.error}</p> : null}
                     <button

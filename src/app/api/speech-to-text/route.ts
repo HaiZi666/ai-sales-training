@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { speechToText } from '@/lib/minimax';
+
+const TRANSCRIBE_API = 'http://127.0.0.1:8090/api/transcribe';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('audio');
+    const body = await req.json();
+    const { audio, format } = body;
 
-    if (!file || !(file instanceof Blob)) {
-      return NextResponse.json({ error: '未收到音频文件' }, { status: 400 });
+    if (!audio) {
+      return NextResponse.json({ error: '未收到音频数据' }, { status: 400 });
     }
 
-    const text = await speechToText(file);
+    const res = await fetch(TRANSCRIBE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audio, format: format || 'webm' }),
+    });
 
-    if (!text) {
-      return NextResponse.json({ error: '识别失败或结果为空' }, { status: 422 });
+    const data = await res.json();
+
+    if (data.code === 0 && data.data?.text) {
+      return NextResponse.json({ text: data.data.text });
     }
 
-    return NextResponse.json({ text });
+    return NextResponse.json({ error: data.message || '识别失败' }, { status: 422 });
   } catch (err) {
     console.error('speech-to-text route error:', err);
-    return NextResponse.json({ error: '服务端转写失败' }, { status: 500 });
+    return NextResponse.json({ error: '转写服务不可用，请确认后端已启动' }, { status: 500 });
   }
 }
