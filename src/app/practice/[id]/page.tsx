@@ -33,6 +33,7 @@ interface Session {
   aiOpeningMessage: string;
   aiOpeningAudio?: string;
   parentType?: ParentType;
+  voiceMode?: boolean;
 }
 
 type Mode = 'text' | 'voice' | 'realtime';
@@ -63,6 +64,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   /** 静音自动结束录音时，回调可能在数秒后执行，需始终调用最新的发送逻辑 */
   const handleSendRef = useRef<(textToSend?: string) => Promise<void>>(async () => {});
   const sessionIdRef = useRef<string | null>(null);
+  const hasInitializedModeRef = useRef(false);
 
   const voice = useVoiceRecording();
   const [voiceTranscribeHint, setVoiceTranscribeHint] = useState<string | null>(null);
@@ -83,6 +85,11 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
         const data = await res.json();
 
         if (data.session) {
+          if (!hasInitializedModeRef.current) {
+            setMode(data.session.voiceMode ? 'voice' : 'text');
+            hasInitializedModeRef.current = true;
+          }
+
           setSession({
             id: data.session.id,
             customerType: data.session.customerType,
@@ -92,6 +99,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
             aiOpeningMessage: data.session.aiOpeningMessage || '',
             aiOpeningAudio: data.session.aiOpeningAudio,
             parentType: data.session.parentType,
+            voiceMode: data.session.voiceMode,
           });
           setCurrentNode(data.session.currentNode);
 
@@ -151,6 +159,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           aiOpeningMessage: data.session.aiOpeningMessage || '',
           aiOpeningAudio: data.session.aiOpeningAudio,
           parentType: data.session.parentType,
+          voiceMode: data.session.voiceMode,
         });
         setCurrentNode(data.session.currentNode);
       } catch (e) {
@@ -407,7 +416,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
         <div className="flex items-center gap-2">
           {/* 模式切换 */}
           <div className="flex bg-gray-100 rounded-lg p-0.5">
-            {(['text', 'voice', 'realtime'] as Mode[]).map(m => (
+            {(['text', 'voice'] as Mode[]).map(m => (
               <button
                 key={m}
                 onClick={() => setMode(m)}

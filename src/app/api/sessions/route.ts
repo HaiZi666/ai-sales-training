@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     if (examNode) session.examNode = examNode;
     if (grade) session.grade = grade;
     if (parentType) session.parentType = parentType as ParentType;
+    session.voiceMode = Boolean(voiceMode);
 
     // 生成AI开场白
     const config = CUSTOMER_TYPE_CONFIG[customerType as keyof typeof CUSTOMER_TYPE_CONFIG];
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
       examNode,
       grade,
       parentType: session.parentType,
+      voiceMode: session.voiceMode,
     });
   } catch (error) {
     console.error('创建会话失败:', error);

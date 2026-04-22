@@ -88,6 +88,8 @@ export interface Session {
   grade?: '初一' | '初二' | '初三' | '高一' | '高二' | '高三';
   /** 家长心理/沟通风格（与 customerType 成绩画像叠加） */
   parentType?: ParentType;
+  /** 新建演练时选择的默认交互模式 */
+  voiceMode?: boolean;
 }
 
 // 评分配置
