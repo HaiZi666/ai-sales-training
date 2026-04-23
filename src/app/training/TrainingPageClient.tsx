@@ -216,30 +216,14 @@ export default function TrainingPageClient() {
   return (
     <PageShell>
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] transition hover:text-[var(--color-brand-strong)]">
-            <ArrowLeft className="h-4 w-4" />
-            返回首页
-          </Link>
-        </div>
 
         <PageHeader
           title="基础知识闯关练"
-          description="AI 考官出题，即时评分反馈。单页面聚焦一个任务：选题、开始、完成。"
+          description=""
         />
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-[var(--color-text)]">请选择培训模式</h2>
-          </div>
-          <SegmentedControl
-            value={mode}
-            onChange={value => handleModeChange(value as TrainingMode)}
-            options={[
-              { value: 'practice', label: '练习' },
-              { value: 'exam', label: '考试' },
-            ]}
-          />
+          <h2 className="text-base font-semibold text-[var(--color-text)]">请选择培训模式</h2>
         </div>
 
         <div className="mb-8 grid gap-4 md:grid-cols-2">
