@@ -58,6 +58,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   const [showScorePanel, setShowScorePanel] = useState(false);
   const [showEndConfirmDialog, setShowEndConfirmDialog] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [isVoiceTranscribing, setIsVoiceTranscribing] = useState(false);
   const hasShownTenRoundDialog = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -314,16 +315,22 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
       setVoiceTranscribeHint('录音数据为空，请重试');
       return;
     }
-    const { text, error } = await transcribeAudio(blob);
-    if (error) {
-      setVoiceTranscribeHint(error);
-      return;
+    setIsVoiceTranscribing(true);
+    try {
+      const { text, error } = await transcribeAudio(blob);
+      if (error) {
+        setVoiceTranscribeHint(error);
+        return;
+      }
+      if (!text) {
+        setVoiceTranscribeHint('未识别到文字，请再说一次或使用文字输入');
+        return;
+      }
+      setIsVoiceTranscribing(false);
+      await handleSendRef.current(text);
+    } finally {
+      setIsVoiceTranscribing(false);
     }
-    if (!text) {
-      setVoiceTranscribeHint('未识别到文字，请再说一次或使用文字输入');
-      return;
-    }
-    await handleSendRef.current(text);
   };
 
   const handleRecordingComplete = async () => {
@@ -477,6 +484,18 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           </div>
         )}
 
+        {isVoiceTranscribing && (
+          <div className="flex justify-end">
+            <div className="bg-blue-500 px-4 py-3 rounded-2xl rounded-br-sm shadow-sm">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce delay-100" />
+                <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce delay-200" />
+              </div>
+            </div>
+          </div>
+        )}
+
         {aiSpeaking && (
           <div className="flex justify-start">
             <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-600 text-sm flex items-center gap-2">
@@ -506,12 +525,12 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           <div className="flex flex-col items-center gap-3">
             <button
               onClick={handleVoiceButton}
-              disabled={isLoading || isFinished}
+              disabled={isLoading || isFinished || isVoiceTranscribing}
               className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all active:scale-95 ${
                 voice.isRecording
                   ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200'
                   : 'bg-blue-500 text-white active:bg-blue-600'
-              } ${isLoading || isFinished ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${isLoading || isFinished || isVoiceTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {voice.isRecording ? '⏹' : '🎤'}
             </button>
@@ -521,8 +540,11 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
                 <div className="text-gray-500 text-xs mt-1">说完停顿约 1.5 秒将自动转文字并发送，也可点击停止立即发送</div>
               </div>
             )}
-            {!voice.isRecording && !isLoading && (
+            {!voice.isRecording && !isLoading && !isVoiceTranscribing && (
               <div className="text-gray-500 text-sm text-center px-2">点击麦克风说话，停顿后自动发送</div>
+            )}
+            {isVoiceTranscribing && (
+              <div className="text-gray-500 text-sm text-center px-2">正在识别语音...</div>
             )}
           </div>
         ) : (
