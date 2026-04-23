@@ -35,15 +35,11 @@ export default function Home() {
       <div className="mx-auto max-w-5xl">
         <section className="bg-grid-soft overflow-hidden rounded-[28px] border border-white/80 bg-[var(--color-surface-muted)] px-6 py-10 shadow-[var(--shadow-card)] md:px-10 md:py-16">
           <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="brand" className="mb-5">
-              AI Sales Training Suite
-            </Badge>
             <h1 className="text-4xl font-semibold tracking-tight text-[var(--color-text)] md:text-6xl">
               AI 销售通
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[var(--color-text-secondary)] md:text-lg">
-              用统一的 AI SaaS 工具体验，完成基础知识训练、邀约对话模拟与录音复盘，
-              帮助销售员更快形成稳定、可复用的高质量表达。
+              销售员入门到精通的全方位提升工具 ，助力销售员自信从容应对各种销售问题。
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
