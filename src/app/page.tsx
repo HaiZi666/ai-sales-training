@@ -22,7 +22,7 @@ export default function Home() {
       badge: '核心工具',
     },
     {
-      href: 'http://talking.sqkam2.top:8765/upload',
+      href: 'http://hk.sqkam2.top:8765/',
       title: '录音分析',
       description: '上传真实沟通录音，自动生成复盘洞察、亮点总结与跟进建议。',
       icon: AudioLines,
