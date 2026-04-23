@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const TRANSCRIBE_API = 'http://talking.sqkam2.top:8765/api/transcribe';
+const TRANSCRIBE_API = 'http://hk.sqkam2.top:8765/api/transcribe';
 
 export async function POST(req: NextRequest) {
   try {

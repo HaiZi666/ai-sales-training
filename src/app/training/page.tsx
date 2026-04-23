@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpenCheck, CircleCheck, GraduationCap, LoaderCircle, MessageSquareQuote } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpenCheck,
+  CircleCheck,
+  FileCheck2,
+  GraduationCap,
+  LoaderCircle,
+  MessageSquareQuote,
+  Sparkles,
+} from 'lucide-react';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +52,26 @@ const QUESTION_TYPES: {
     desc: '测试你对机构产品和课程体系的掌握',
   },
 ];
+
+const MODE_CONFIG: Record<
+  TrainingMode,
+  {
+    title: string;
+    description: string;
+    icon: typeof Sparkles;
+  }
+> = {
+  practice: {
+    title: '练习模式',
+    description: '按题型进入日常训练，逐题作答，适合巩固知识点。',
+    icon: Sparkles,
+  },
+  exam: {
+    title: '考试模式',
+    description: '系统自动随机组卷后跳转独立答题页，适合完整测评。',
+    icon: FileCheck2,
+  },
+};
 
 export default function TrainingPage() {
   const router = useRouter();
@@ -199,24 +228,6 @@ export default function TrainingPage() {
           description="AI 考官出题，即时评分反馈。单页面聚焦一个任务：选题、开始、完成。"
         />
 
-        <Card className="mb-6">
-          <CardHeader className="flex-row items-start gap-4 pb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
-              <BookOpenCheck className="h-5 w-5" />
-            </div>
-            <div className="space-y-3">
-              <div>
-                <CardTitle>闯关练规则</CardTitle>
-              </div>
-              <div className="grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">
-                <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">题库题目随机顺序逐题出完，答完为止</div>
-                <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">每道题满分 10 分，完成后统一评分</div>
-                <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">结束后展示总分、等级与参考答案</div>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-[var(--color-text)]">请选择培训模式</h2>
@@ -229,6 +240,47 @@ export default function TrainingPage() {
               { value: 'exam', label: '考试' },
             ]}
           />
+        </div>
+
+        <div className="mb-8 grid gap-4 md:grid-cols-2">
+          {(Object.entries(MODE_CONFIG) as Array<[TrainingMode, (typeof MODE_CONFIG)[TrainingMode]]>).map(
+            ([modeKey, config]) => {
+              const Icon = config.icon;
+              const active = mode === modeKey;
+
+              return (
+                <button
+                  key={modeKey}
+                  type="button"
+                  onClick={() => handleModeChange(modeKey)}
+                  className={cn(
+                    'w-full rounded-[var(--radius-xl)] border bg-white p-5 text-left transition-all',
+                    active
+                      ? 'border-[rgba(124,108,248,0.34)] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(238,235,255,0.56))] shadow-[0_18px_40px_-28px_rgba(97,92,248,0.45)]'
+                      : 'border-[var(--color-border-soft)] hover:border-[var(--color-border)] hover:shadow-[var(--shadow-card)]'
+                  )}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[var(--color-fill-soft)] text-[var(--color-brand-strong)]">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-[var(--color-text)]">{config.title}</h3>
+                        {active ? (
+                          <Badge variant="brand" className="gap-1">
+                            <CircleCheck className="h-3.5 w-3.5" />
+                            当前模式
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{config.description}</p>
+                    </div>
+                  </div>
+                </button>
+              );
+            }
+          )}
         </div>
 
         {mode === 'practice' ? (
@@ -274,6 +326,25 @@ export default function TrainingPage() {
                 );
               })}
             </div>
+
+            <Card className="mt-8 mb-6">
+              <CardHeader className="flex-row items-start gap-4 pb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
+                  <BookOpenCheck className="h-5 w-5" />
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <CardTitle>练习规则</CardTitle>
+                    <CardDescription>进入题型后逐题练习，适合日常巩固与快速复盘。</CardDescription>
+                  </div>
+                  <div className="grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">
+                    <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">按所选题型随机顺序逐题出题，答完为止</div>
+                    <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">每道题满分 10 分，完成后统一查看培训总结</div>
+                    <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">结果展示总分、等级以及每题参考答案</div>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
 
             <div className="mt-8">
               <Button
@@ -328,6 +399,25 @@ export default function TrainingPage() {
                     当前考试题库没有有效分类，无法组卷。
                   </div>
                 ) : null}
+
+                <Card className="mb-6">
+                  <CardHeader className="flex-row items-start gap-4 pb-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
+                      <FileCheck2 className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <CardTitle>考试规则</CardTitle>
+                        <CardDescription>系统自动随机组卷，进入独立答题页完成整套试卷。</CardDescription>
+                      </div>
+                      <div className="grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">
+                        <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">优先随机抽取 {EXAM_PAPER_CATEGORY_COUNT} 个分类，不足则按现有最大有效分类数组卷</div>
+                        <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">每个分类随机抽取 1 道题，组成一整套考试试卷</div>
+                        <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">完成整套试卷后统一评分，展示总分、正确率与逐题明细</div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
 
                 <div className="mt-2">
                   <Button
