@@ -91,13 +91,6 @@ export default function ReportPage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] transition hover:text-[var(--color-brand-strong)]">
-            <ArrowLeft className="h-4 w-4" />
-            返回首页
-          </Link>
-        </div>
-
         <div className="mb-8 text-center">
           <Badge variant="brand" className="mb-4">完整分析 · 针对性提升</Badge>
           <h1 className="text-3xl font-semibold text-[var(--color-text)] md:text-4xl">演练报告</h1>

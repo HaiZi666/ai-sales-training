@@ -224,24 +224,16 @@ export default function NewPracticePage() {
   return (
     <PageShell>
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] transition hover:text-[var(--color-brand-strong)]">
-            <ArrowLeft className="h-4 w-4" />
-            返回首页
-          </Link>
-        </div>
 
         <PageHeader
           title="新建演练"
-          description="选择演练模式、客户来源和画像后开始 AI 陪练，不改动原有业务参数与创建流程。"
-          action={<Badge variant="brand">单任务配置页</Badge>}
+          description=""
         />
 
         <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>1. 选择演练模式</CardTitle>
-              <CardDescription>以浅色极简卡片呈现两种核心入口。</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {VOICE_MODES.map(mode => {
@@ -269,7 +261,6 @@ export default function NewPracticePage() {
           <Card>
             <CardHeader>
               <CardTitle>2. 选择客户类型</CardTitle>
-              <CardDescription>确定本次演练的获客来源与沟通背景。</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {CUSTOMER_CHANNELS.map(ch => (
@@ -288,7 +279,6 @@ export default function NewPracticePage() {
           <Card>
             <CardHeader>
               <CardTitle>3. 选择客户画像</CardTitle>
-              <CardDescription>考试节点、年级、成绩与家长类型共同决定 AI 家长人设。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               <div>
@@ -353,9 +343,6 @@ export default function NewPracticePage() {
                   <UserRoundSearch className="h-4 w-4 text-[var(--color-brand-strong)]" />
                   家长类型
                 </div>
-                <p className="mb-3 text-sm text-[var(--color-text-secondary)]">
-                  决定沟通风格与关注重点，与成绩分段可叠加。
-                </p>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {PARENT_TYPE_OPTIONS.map(opt => (
                     <button

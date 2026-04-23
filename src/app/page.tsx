@@ -4,6 +4,7 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/ui/page-shell';
+import { AUDIO_ANALYSIS_URL } from '@/constants/common';
 
 export default function Home() {
   const modules = [
@@ -13,6 +14,7 @@ export default function Home() {
       description: 'AI 考官逐题出题，帮助销售团队快速巩固产品知识与场景理解。',
       icon: BookOpen,
       badge: '知识闯关',
+      btnText: '进入训练'
     },
     {
       href: '/practice/new',
@@ -20,13 +22,15 @@ export default function Home() {
       description: '按客户画像与沟通场景配置演练，沉浸式训练成交前关键对话。',
       icon: Sparkles,
       badge: '核心工具',
+      btnText: '开始演练'
     },
     {
-      href: 'http://hk.sqkam2.top:8765/',
+      href: AUDIO_ANALYSIS_URL,
       title: '录音分析',
       description: '上传真实沟通录音，自动生成复盘洞察、亮点总结与跟进建议。',
       icon: AudioLines,
       badge: 'AI 复盘',
+      btnText: 'Ai评价'
     },
   ];
 
@@ -41,21 +45,6 @@ export default function Home() {
             <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[var(--color-text-secondary)] md:text-lg">
               销售员入门到精通的全方位提升工具 ，助力销售员自信从容应对各种销售问题。
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/practice/new"
-                className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] px-5 py-3 text-base font-medium text-white shadow-[var(--shadow-button)] transition hover:brightness-[1.03]"
-              >
-                开始 AI 陪练
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/training"
-                className="inline-flex min-w-[180px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-fill-soft)] px-5 py-3 text-base font-medium text-[var(--color-text)] transition hover:bg-[var(--color-fill-soft-hover)]"
-              >
-                进入知识训练
-              </Link>
-            </div>
           </div>
         </section>
 
@@ -78,7 +67,7 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-brand-strong)]">
-                      进入模块
+                      {module.btnText}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </div>
                   </CardContent>

@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, House, History, Sparkles } from 'lucide-react';
+import { AudioLines, BookOpen, House, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AUDIO_ANALYSIS_URL } from '@/constants/common';
 
 const navItems = [
   { href: '/', label: '首页', icon: House, match: (pathname: string) => pathname === '/' },
   { href: '/training', label: '培训', icon: BookOpen, match: (pathname: string) => pathname.startsWith('/training') },
   { href: '/practice/new', label: '演练', icon: Sparkles, match: (pathname: string) => pathname.startsWith('/practice') },
-  { href: '/history', label: '历史', icon: History, match: (pathname: string) => pathname.startsWith('/history') },
+  { href: AUDIO_ANALYSIS_URL, label: '录音', icon: AudioLines, match: (pathname: string) => pathname === AUDIO_ANALYSIS_URL },
 ] as const;
 
 /**
