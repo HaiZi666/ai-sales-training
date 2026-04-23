@@ -11,6 +11,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/field';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { evaluateTrainingAnswer } from '@/lib/trainingScoring';
 
 interface QuestionResult {
   question: string;
@@ -194,50 +195,11 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
       const blob = await voice.stopRecording();
       if (blob) await transcribeAndFill(blob);
     })();
-  }, [voice.isRecording, voice.duration, transcribeAndFill, voice.stopRecording]);
-
-  const evaluateAnswer = (userAnswer: string, standardAnswer: string): { score: number; feedback: string } => {
-    if (!userAnswer.trim()) {
-      return { score: 0, feedback: '未作答' };
-    }
-    if (!standardAnswer.trim()) {
-      return { score: 7, feedback: '已作答' };
-    }
-
-    const cleanAnswer = standardAnswer.replace(/[*#]/g, '').toLowerCase();
-    const cleanUser = userAnswer.replace(/[*#]/g, '').toLowerCase();
-
-    const keyPhrases = cleanAnswer
-      .split(/[,，。.、\n]/)
-      .map(p => p.trim())
-      .filter(p => p.length > 2);
-
-    const matchedPhrases = keyPhrases.filter(p => cleanUser.includes(p));
-    const matchRate = keyPhrases.length > 0 ? matchedPhrases.length / keyPhrases.length : 0;
-
-    let score: number;
-    let feedback: string;
-
-    if (matchRate >= 0.6) {
-      score = 9;
-      feedback = '回答准确，要点齐全';
-    } else if (matchRate >= 0.4) {
-      score = 7;
-      feedback = '回答基本正确，但有遗漏';
-    } else if (matchRate >= 0.2) {
-      score = 5;
-      feedback = '回答部分正确，核心要点不完整';
-    } else {
-      score = 3;
-      feedback = '回答偏离要点';
-    }
-
-    return { score, feedback };
-  };
+  }, [voice, transcribeAndFill]);
 
   const finalResults = questionResults.map(r => ({
     ...r,
-    ...evaluateAnswer(r.userAnswer, r.standardAnswer),
+    ...evaluateTrainingAnswer(r.userAnswer, r.standardAnswer),
   }));
 
   const totalScore = finalResults.reduce((sum, r) => sum + r.score, 0);
