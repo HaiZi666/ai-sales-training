@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSession, getSession, getSessionList } from '@/lib/store';
 import { CUSTOMER_TYPE_CONFIG, type ParentType } from '@/types';
+import { addMessage } from '@/lib/store';
 import { textToSpeech } from '@/lib/minimax';
 
 // 创建演练会话
@@ -43,21 +44,25 @@ export async function POST(request: NextRequest) {
     // 生成AI开场白
     const config = CUSTOMER_TYPE_CONFIG[customerType as keyof typeof CUSTOMER_TYPE_CONFIG];
     const openingMessages = {
-      type_a: '您好，我听说你们这边有个简单一百的课程？我孩子成绩挺好的，想了解一下。',
-      type_b: '您好，请问你们这是那个简单一百学习中心吗？',
-      type_c: '唉，老师，我现在挺发愁的，孩子成绩一直上不去...',
+      type_a: '你好，你是？',
+      type_b: '你们是做什么的？ ',
+      type_c: '请问哪位？',
     };
 
     const aiMessage = openingMessages[customerType as keyof typeof openingMessages] || '您好，请问您是...？';
     
     // 语音模式下生成TTS
     let aiOpeningAudio = '';
-    if (voiceMode) {
+    if (voiceMode && aiMessage) {
       try {
         aiOpeningAudio = await textToSpeech(aiMessage) || '';
       } catch (e) {
         console.error('TTS生成失败:', e);
       }
+    }
+
+    if (aiMessage) {
+      addMessage(session.id, 'ai', aiMessage, session.currentNode);
     }
 
     return NextResponse.json({
