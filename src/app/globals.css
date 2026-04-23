@@ -1,25 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fc;
+  --foreground: #101828;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-top: env(safe-area-inset-top, 0px);
+  --color-bg: #f7f8fc;
+  --color-surface: #ffffff;
+  --color-surface-muted: rgba(255, 255, 255, 0.82);
+  --color-text: #0f172a;
+  --color-text-secondary: #5b6478;
+  --color-text-muted: #8a93a8;
+  --color-border: #dde2f1;
+  --color-border-soft: #ebeff8;
+  --color-fill-soft: #f3f4fb;
+  --color-fill-soft-hover: #ebeefe;
+  --color-fill-muted: #e8ebf5;
+  --color-brand-from: #7c6cf8;
+  --color-brand-to: #4f8cff;
+  --color-brand-soft: #eeebff;
+  --color-brand-strong: #5b46e8;
+  --color-success: #12b981;
+  --color-success-soft: #e9fbf5;
+  --color-success-strong: #0f8f68;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fff5df;
+  --color-warning-strong: #b77908;
+  --color-danger: #ef4444;
+  --color-danger-soft: #feecee;
+  --color-danger-strong: #c63131;
+  --color-ring: rgba(124, 108, 248, 0.18);
+  --shadow-card: 0 10px 30px -24px rgba(80, 97, 142, 0.28);
+  --shadow-button: 0 14px 30px -18px rgba(97, 92, 248, 0.52);
+  --shadow-modal: 0 24px 60px -36px rgba(36, 49, 89, 0.32);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #000000;
+    --background: #f7f8fc;
+    --foreground: #101828;
   }
+}
+
+* {
+  border-color: var(--color-border-soft);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background:
+    radial-gradient(circle at top, rgba(124, 108, 248, 0.07), transparent 30%),
+    radial-gradient(circle at right top, rgba(79, 140, 255, 0.06), transparent 24%),
+    var(--background);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  min-height: 100vh;
 }
 
 /* 移动端安全区域 */
@@ -43,6 +87,11 @@ textarea {
    避免影响子元素（div card）上的点击事件 */
 body {
   -webkit-touch-callout: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
 /* 可点击元素确保正常响应触屏 */
@@ -90,8 +139,9 @@ a {
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(18px);
+  border-top: 1px solid var(--color-border-soft);
   padding-bottom: var(--safe-area-bottom);
   z-index: 50;
 }
@@ -101,6 +151,14 @@ a {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: white;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(14px);
   padding-top: var(--safe-area-top);
+}
+
+.bg-grid-soft {
+  background-image:
+    linear-gradient(to right, rgba(221, 226, 241, 0.38) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(221, 226, 241, 0.38) 1px, transparent 1px);
+  background-size: 28px 28px;
 }

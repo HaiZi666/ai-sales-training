@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { LoaderCircle, Mic, PhoneOff, PlugZap, Volume2 } from 'lucide-react';
 import { MiniMaxRealtimeClient, TextDeltaEvent } from '@/lib/realtime';
 import { textToSpeech } from '@/lib/minimax';
-import { DialogNode, NODE_ORDER, type ParentType } from '@/types';
+import { DialogNode, type ParentType } from '@/types';
 import { buildSystemPrompt, buildNodeFaqContext } from '@/lib/prompts';
 import { getFAQsByScenario } from '@/lib/knowledge';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface RealtimeRoomProps {
   sessionId: string;
@@ -18,6 +21,17 @@ interface RealtimeRoomProps {
   onNodeChange: (node: DialogNode) => void;
   onFinish: () => void;
 }
+
+type SpeechRecognitionCtor = new () => {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
 
 export default function RealtimeRoom({
   sessionId,
@@ -34,7 +48,6 @@ export default function RealtimeRoom({
     'idle' | 'connecting' | 'ready' | 'listening' | 'thinking' | 'speaking' | 'error'
   >('idle');
   const [messages, setMessages] = useState<{ role: 'ai' | 'sales'; content: string }[]>([]);
-  const [transcript, setTranscript] = useState('');
   const [aiText, setAiText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -43,9 +56,36 @@ export default function RealtimeRoom({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const aiTextRef = useRef('');
   const isConnectedRef = useRef(false);
 
   const MINIMAX_API_KEY = apiKey;
+
+  const playTTS = useCallback(async (text: string) => {
+    try {
+      setStatus('speaking');
+      const audioUrl = await textToSpeech(text);
+      if (!audioUrl) {
+        setStatus('ready');
+        return;
+      }
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onplay = () => setStatus('speaking');
+      audio.onended = () => {
+        setStatus('ready');
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        setStatus('ready');
+        audioRef.current = null;
+      };
+      await audio.play();
+    } catch {
+      setStatus('ready');
+    }
+  }, []);
 
   // 清理函数
   const cleanup = useCallback(() => {
@@ -78,7 +118,7 @@ export default function RealtimeRoom({
       const faqContext = buildNodeFaqContext(
         currentNode,
         customerType as 'type_a' | 'type_b' | 'type_c',
-        (scenario) => getFAQsByScenario(scenario as any)
+        scenario => getFAQsByScenario(scenario as Parameters<typeof getFAQsByScenario>[0])
       );
 
       // 构建完整的系统提示词
@@ -104,21 +144,29 @@ export default function RealtimeRoom({
         // 文字增量
         if (msg.type === 'response.text.delta') {
           const delta = (msg as unknown as TextDeltaEvent).delta;
-          setAiText((prev) => prev + delta);
+          setAiText((prev) => {
+            const next = prev + delta;
+            aiTextRef.current = next;
+            return next;
+          });
         }
 
         // AI 说话结束
         if (msg.type === 'response.done') {
           setStatus('ready');
-          if (aiText) {
+          if (aiTextRef.current) {
+            const finalText = aiTextRef.current;
+            setMessages((prev) => [...prev, { role: 'ai', content: finalText }]);
+            setAiText('');
+            aiTextRef.current = '';
             // 播放 AI 回复
-            playTTS(aiText);
+            playTTS(finalText);
           }
         }
 
         // 错误
         if (msg.type === 'error') {
-          const err = msg.error as any;
+          const err = msg.error as { message?: string } | undefined;
           setError(err?.message || 'Unknown error');
           setStatus('error');
         }
@@ -128,8 +176,8 @@ export default function RealtimeRoom({
       await client.startSession();
       isConnectedRef.current = true;
       setStatus('ready');
-    } catch (e: any) {
-      setError(e.message || 'Connection failed');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Connection failed');
       setStatus('error');
     }
   }, [
@@ -140,35 +188,8 @@ export default function RealtimeRoom({
     parentType,
     currentNode,
     cleanup,
-    aiText,
+    playTTS,
   ]);
-
-  // 播放 TTS
-  const playTTS = async (text: string) => {
-    try {
-      setStatus('speaking');
-      const audioUrl = await textToSpeech(text);
-      if (!audioUrl) {
-        setStatus('ready');
-        return;
-      }
-
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      audio.onplay = () => setStatus('speaking');
-      audio.onended = () => {
-        setStatus('ready');
-        audioRef.current = null;
-      };
-      audio.onerror = () => {
-        setStatus('ready');
-        audioRef.current = null;
-      };
-      await audio.play();
-    } catch {
-      setStatus('ready');
-    }
-  };
 
   // 发送用户语音
   const sendVoiceMessage = async () => {
@@ -211,7 +232,7 @@ export default function RealtimeRoom({
           setStatus('ready');
         }
       }, 3000);
-    } catch (e) {
+    } catch {
       setError('Microphone error');
       setStatus('error');
     }
@@ -230,19 +251,11 @@ export default function RealtimeRoom({
     try {
       await client.sendText(text);
       // 等待 response.done
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '发送失败');
       setStatus('error');
     }
   };
-
-  // AI 回复到达时添加到消息列表
-  useEffect(() => {
-    if (aiText && status === 'ready') {
-      setMessages((prev) => [...prev, { role: 'ai', content: aiText }]);
-      setAiText('');
-    }
-  }, [aiText, status]);
 
   // 结束演练
   const handleEnd = () => {
@@ -277,50 +290,45 @@ export default function RealtimeRoom({
   }[status];
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex h-full flex-col bg-[var(--color-bg)]">
       {/* 顶部栏 */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-[var(--color-border-soft)] bg-white/88 px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${statusColor}`} />
           <div>
-            <div className="font-semibold text-base">
+            <div className="text-base font-semibold text-[var(--color-text)]">
               {customerType} · {customerScore}
             </div>
-            <div className="text-gray-500 text-xs">实时语音模式</div>
+            <div className="text-xs text-[var(--color-text-muted)]">实时语音模式</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={status === 'ready' ? sendVoiceMessage : undefined}
             disabled={!['ready', 'idle'].includes(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              status === 'ready'
-                ? 'bg-red-500 text-white active:bg-red-600'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+            variant={status === 'ready' ? 'danger' : 'secondary'}
+            size="sm"
           >
-            🎤 {status === 'ready' ? '按住说话' : statusText}
-          </button>
-          <button
-            onClick={handleEnd}
-            className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg"
-          >
+            <Mic className="h-4 w-4" /> {status === 'ready' ? '按住说话' : statusText}
+          </Button>
+          <Button onClick={handleEnd} variant="danger" size="sm">
+            <PhoneOff className="h-4 w-4" />
             结束
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* 当前节点提示 */}
-      <div className="bg-white border-b px-4 py-2">
+      <div className="border-b border-[var(--color-border-soft)] bg-white px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">当前节点：</span>
-          <span className="text-sm font-medium text-blue-600">{currentNode}</span>
+          <span className="text-xs text-[var(--color-text-muted)]">当前节点：</span>
+          <Badge variant="brand">{currentNode}</Badge>
         </div>
       </div>
 
       {/* 错误提示 */}
       {error && (
-        <div className="mx-4 mt-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+        <div className="mx-4 mt-2 rounded-[var(--radius-lg)] border border-[rgba(239,68,68,0.16)] bg-[var(--color-danger-soft)] px-4 py-2 text-sm text-[var(--color-danger)]">
           {error}
         </div>
       )}
@@ -328,7 +336,7 @@ export default function RealtimeRoom({
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && status === 'ready' && (
-          <div className="text-center text-gray-400 text-sm mt-8">
+          <div className="mt-8 text-center text-sm text-[var(--color-text-muted)]">
             点击下方按钮开始对话
           </div>
         )}
@@ -339,10 +347,10 @@ export default function RealtimeRoom({
             className={`flex ${msg.role === 'sales' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
+              className={`max-w-[85%] rounded-[22px] px-4 py-2.5 text-sm ${
                 msg.role === 'sales'
-                  ? 'bg-blue-500 text-white rounded-br-sm'
-                  : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
+                  ? 'rounded-br-sm bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] text-white shadow-[var(--shadow-button)]'
+                  : 'rounded-bl-sm border border-[var(--color-border-soft)] bg-white text-[var(--color-text)] shadow-[var(--shadow-card)]'
               }`}
             >
               {msg.content}
@@ -353,40 +361,36 @@ export default function RealtimeRoom({
         {/* AI 正在输入 */}
         {aiText && (
           <div className="flex justify-start">
-            <div className="bg-white px-4 py-2.5 rounded-2xl rounded-bl-sm shadow-sm text-sm">
-              <span className="animate-pulse text-gray-400">AI 输入中...</span>
+            <div className="rounded-[22px] rounded-bl-sm border border-[var(--color-border-soft)] bg-white px-4 py-2.5 text-sm shadow-[var(--shadow-card)]">
+              <span className="animate-pulse text-[var(--color-text-muted)]">AI 输入中...</span>
             </div>
           </div>
         )}
       </div>
 
       {/* 底部操作 */}
-      <div className="bg-white border-t p-4 safe-area-bottom">
+      <div className="safe-area-bottom border-t border-[var(--color-border-soft)] bg-white/92 p-4 backdrop-blur-xl">
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={status === 'idle' ? connect : undefined}
             disabled={!['idle', 'error'].includes(status)}
-            className={`flex-1 py-3 rounded-xl font-medium text-sm transition-colors ${
-              status === 'idle' || status === 'error'
-                ? 'bg-blue-600 text-white active:bg-blue-700'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+            className="flex-1"
           >
+            {status === 'connecting' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
             {status === 'connecting' ? '连接中...' : status === 'error' ? '重连' : '连接语音'}
-          </button>
+          </Button>
 
           {status === 'ready' && (
-            <button
-              onClick={sendVoiceMessage}
-              className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium text-sm active:bg-red-600"
-            >
-              🎤 按住说话
-            </button>
+            <Button onClick={sendVoiceMessage} variant="danger" className="flex-1">
+              <Mic className="h-4 w-4" />
+              按住说话
+            </Button>
           )}
 
           {(status === 'thinking' || status === 'speaking') && (
-            <div className="flex-1 py-3 bg-yellow-100 text-yellow-700 rounded-xl font-medium text-sm text-center animate-pulse">
-              {status === 'thinking' ? '🤔 AI思考中...' : '🔊 AI说话中...'}
+            <div className="flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-warning-soft)] py-3 text-center text-sm font-medium text-[var(--color-warning-strong)]">
+              {status === 'thinking' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4 animate-pulse" />}
+              {status === 'thinking' ? 'AI思考中...' : 'AI说话中...'}
             </div>
           )}
         </div>
@@ -398,8 +402,11 @@ export default function RealtimeRoom({
 // 工具: Web Speech API 转写
 function transcribeAudio(audioBlob: Blob): Promise<string> {
   return new Promise((resolve) => {
-    const recognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!recognition) {
       resolve('');
       return;
@@ -413,7 +420,7 @@ function transcribeAudio(audioBlob: Blob): Promise<string> {
       recognizer.interimResults = false;
       recognizer.lang = 'zh-CN';
 
-      recognizer.onresult = (event: any) => {
+      recognizer.onresult = (event) => {
         resolve(event.results[0][0].transcript);
       };
       recognizer.onerror = () => resolve('');

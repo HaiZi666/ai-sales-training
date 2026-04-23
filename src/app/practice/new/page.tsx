@@ -3,8 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, Mic, MessageSquareText, Play, ScanSearch, Sparkles, UserRoundSearch } from 'lucide-react';
 import type { ParentType } from '@/types';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/ui/page-shell';
+import { cn } from '@/lib/utils';
 
 // 演练模式
 type VoiceMode = 'text' | 'voice';
@@ -72,14 +78,12 @@ const CUSTOMER_PROFILE_CONFIG: Record<CustomerProfile, {
 
 // 客户画像按年级和成绩的映射（客户画像 = 年级段 + 成绩段）
 type ProfileMapKey = `${CustomerChannel}_${Grade}_${ScoreLevel}`;
-const PROFILE_MAP: Record<ProfileMapKey, CustomerProfile> = {} as any;
+const PROFILE_MAP: Partial<Record<ProfileMapKey, CustomerProfile>> = {};
 
 // 生成所有组合的映射
 const CHANNELS: CustomerChannel[] = ['direct_push', 'whitelist'];
 const GRADES: Grade[] = ['初一', '初二', '初三', '高一', '高二', '高三'];
 const SCORE_LEVELS: ScoreLevel[] = ['成绩优秀型', '成绩中游型', '成绩薄弱型'];
-const PROFILES: CustomerProfile[] = ['grade_top', 'grade_mid', 'grade_low'];
-
 CHANNELS.forEach(ch => {
   GRADES.forEach(grade => {
     SCORE_LEVELS.forEach(score => {
@@ -96,9 +100,9 @@ CHANNELS.forEach(ch => {
 });
 
 // 配置选项
-const VOICE_MODES: { value: VoiceMode; label: string; emoji: string }[] = [
-  { value: 'text', label: '文字模式', emoji: '💬' },
-  { value: 'voice', label: '语音模式', emoji: '🎤' },
+const VOICE_MODES: { value: VoiceMode; label: string }[] = [
+  { value: 'text', label: '文字模式' },
+  { value: 'voice', label: '语音模式' },
 ];
 
 const CUSTOMER_CHANNELS: { value: CustomerChannel; label: string }[] = [
@@ -146,7 +150,7 @@ export default function NewPracticePage() {
 
   // 根据已选的客户类型、年级、成绩自动计算客户画像
   const computedProfile = form.customerChannel && form.grade && form.scoreLevel
-    ? PROFILE_MAP[`${form.customerChannel}_${form.grade}_${form.scoreLevel}`]
+    ? PROFILE_MAP[`${form.customerChannel}_${form.grade}_${form.scoreLevel}` as ProfileMapKey] ?? null
     : null;
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -159,7 +163,7 @@ export default function NewPracticePage() {
       const next = { ...prev, [key]: value };
       // 重新计算客户画像
       if (next.customerChannel && next.grade && next.scoreLevel) {
-        next.customerProfile = PROFILE_MAP[`${next.customerChannel}_${next.grade}_${next.scoreLevel}`];
+        next.customerProfile = PROFILE_MAP[`${next.customerChannel}_${next.grade}_${next.scoreLevel}` as ProfileMapKey] ?? null;
       }
       return next;
     });
@@ -209,165 +213,184 @@ export default function NewPracticePage() {
     }
   };
 
-  // 通用卡片样式（button 元素，移动端可靠响应点击）
   const cardClass = (isSelected: boolean) =>
-    `w-full p-4 rounded-lg border-2 text-center font-medium transition-all cursor-pointer ${
+    cn(
+      'w-full rounded-[var(--radius-lg)] border bg-white p-4 text-center font-medium transition-all',
       isSelected
-        ? 'border-blue-500 bg-blue-50'
-        : 'border-gray-200 hover:border-gray-300 bg-white'
-    }`;
+        ? 'border-[rgba(124,108,248,0.34)] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(238,235,255,0.56))] shadow-[0_18px_40px_-28px_rgba(97,92,248,0.45)]'
+        : 'border-[var(--color-border-soft)] hover:border-[var(--color-border)] hover:bg-[var(--color-fill-soft)]'
+    );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
-      <div className="max-w-2xl mx-auto">
-        {/* 顶部导航 */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/" className="text-gray-500 hover:text-gray-700">
-            ← 返回
+    <PageShell>
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-6">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] transition hover:text-[var(--color-brand-strong)]">
+            <ArrowLeft className="h-4 w-4" />
+            返回首页
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">新建演练</h1>
-        <p className="text-gray-600 mb-8">选择配置，开始AI陪练</p>
+        <PageHeader
+          title="新建演练"
+          description="选择演练模式、客户来源和画像后开始 AI 陪练，不改动原有业务参数与创建流程。"
+          action={<Badge variant="brand">单任务配置页</Badge>}
+        />
 
-        {/* Step 1: 选择演练模式 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">1. 选择演练模式</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {VOICE_MODES.map(mode => (
-              <button
-                key={mode.value}
-                type="button"
-                onClick={() => handleStepChange('voiceMode', mode.value)}
-                className={cardClass(form.voiceMode === mode.value)}
-              >
-                <div className="text-2xl mb-2">{mode.emoji}</div>
-                <div className="font-medium">{mode.label}</div>
-              </button>
-            ))}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>1. 选择演练模式</CardTitle>
+              <CardDescription>以浅色极简卡片呈现两种核心入口。</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {VOICE_MODES.map(mode => {
+                const Icon = mode.value === 'voice' ? Mic : MessageSquareText;
+
+                return (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => handleStepChange('voiceMode', mode.value)}
+                    className={cardClass(form.voiceMode === mode.value)}
+                  >
+                    <div className="mb-3 flex justify-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--color-fill-soft)] text-[var(--color-brand-strong)]">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="font-semibold text-[var(--color-text)]">{mode.label}</div>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>2. 选择客户类型</CardTitle>
+              <CardDescription>确定本次演练的获客来源与沟通背景。</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {CUSTOMER_CHANNELS.map(ch => (
+                <button
+                  key={ch.value}
+                  type="button"
+                  onClick={() => handleStepChange('customerChannel', ch.value)}
+                  className={cardClass(form.customerChannel === ch.value)}
+                >
+                  <div className="font-semibold text-[var(--color-text)]">{ch.label}</div>
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>3. 选择客户画像</CardTitle>
+              <CardDescription>考试节点、年级、成绩与家长类型共同决定 AI 家长人设。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+                  <ScanSearch className="h-4 w-4 text-[var(--color-brand-strong)]" />
+                  考试节点
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                  {EXAM_NODES.map(node => (
+                    <button
+                      key={node}
+                      type="button"
+                      onClick={() => updateForm('examNode', node)}
+                      className={cardClass(form.examNode === node)}
+                    >
+                      {node}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+                  <Sparkles className="h-4 w-4 text-[var(--color-brand-strong)]" />
+                  年级
+                </div>
+                <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+                  {GRADES.map(grade => (
+                    <button
+                      key={grade}
+                      type="button"
+                      onClick={() => handleStepChange('grade', grade)}
+                      className={cardClass(form.grade === grade)}
+                    >
+                      {grade}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+                  <Play className="h-4 w-4 text-[var(--color-brand-strong)]" />
+                  成绩分段
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  {SCORE_LEVELS.map(score => (
+                    <button
+                      key={score}
+                      type="button"
+                      onClick={() => handleStepChange('scoreLevel', score)}
+                      className={cardClass(form.scoreLevel === score)}
+                    >
+                      {score}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+                  <UserRoundSearch className="h-4 w-4 text-[var(--color-brand-strong)]" />
+                  家长类型
+                </div>
+                <p className="mb-3 text-sm text-[var(--color-text-secondary)]">
+                  决定沟通风格与关注重点，与成绩分段可叠加。
+                </p>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {PARENT_TYPE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => updateForm('parentType', opt.value)}
+                      className={cardClass(form.parentType === opt.value)}
+                    >
+                      <span className="text-sm font-medium leading-snug">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <Button
+              onClick={handleStart}
+              disabled={!isFormComplete || isCreating}
+              size="lg"
+              className="w-full"
+            >
+              {isCreating ? '创建中...' : '开始 AI 陪练'}
+            </Button>
+
+            <div className="text-center text-sm text-[var(--color-text-secondary)]">
+              {form.voiceMode === 'voice' && '语音模式已开启，AI 将以语音回复。'}
+              {form.voiceMode === 'text' && '文字模式已开启，输入文本即可与 AI 对话。'}
+              {form.voiceMode === null && '请选择演练模式开始配置。'}
+            </div>
           </div>
-        </div>
-
-        {/* Step 2: 选择客户类型 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">2. 选择客户类型</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {CUSTOMER_CHANNELS.map(ch => (
-              <button
-                key={ch.value}
-                type="button"
-                onClick={() => handleStepChange('customerChannel', ch.value)}
-                className={cardClass(form.customerChannel === ch.value)}
-              >
-                <div className="font-medium">{ch.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Step 3: 选择客户画像（考试节点 + 年级 + 成绩） */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-5">3. 选择客户画像</h2>
-
-          <div className="space-y-5 divide-y divide-gray-100 [&>*]:pt-5 first:[&>*]:pt-0">
-            {/* 考试节点 */}
-            <div>
-              <p className="text-base font-semibold text-gray-800 mb-2">📅 考试节点</p>
-              <div className="grid grid-cols-3 gap-3">
-                {EXAM_NODES.map(node => (
-                  <button
-                    key={node}
-                    type="button"
-                    onClick={() => updateForm('examNode', node)}
-                    className={cardClass(form.examNode === node)}
-                  >
-                    {node}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 年级 */}
-            <div>
-              <p className="text-base font-semibold text-gray-800 mb-2">🎓 年级</p>
-              <div className="grid grid-cols-3 gap-3">
-                {GRADES.map(grade => (
-                  <button
-                    key={grade}
-                    type="button"
-                    onClick={() => handleStepChange('grade', grade)}
-                    className={cardClass(form.grade === grade)}
-                  >
-                    {grade}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 成绩 */}
-            <div>
-              <p className="text-base font-semibold text-gray-800 mb-2">📊 成绩</p>
-              <div className="grid grid-cols-3 gap-3">
-                {SCORE_LEVELS.map(score => (
-                  <button
-                    key={score}
-                    type="button"
-                    onClick={() => handleStepChange('scoreLevel', score)}
-                    className={cardClass(form.scoreLevel === score)}
-                  >
-                    {score}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-base font-semibold text-gray-800 mb-2">👤 家长类型</p>
-              <p className="text-sm text-gray-500 mb-3">决定沟通风格与关注重点，与成绩分段可叠加</p>
-              <div className="grid grid-cols-2 gap-3">
-                {PARENT_TYPE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => updateForm('parentType', opt.value)}
-                    className={cardClass(form.parentType === opt.value)}
-                  >
-                    <span className="text-sm font-medium leading-snug">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 开始按钮 */}
-        <button
-          onClick={handleStart}
-          disabled={!isFormComplete || isCreating}
-          className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
-            !isFormComplete
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {isCreating ? '创建中...' : '开始AI陪练'}
-        </button>
-
-        {/* 提示信息 */}
-        <div className="mt-6 text-center text-gray-500 text-sm">
-          {form.voiceMode === 'voice' && (
-            <p className="text-blue-600">🎤 语音模式已开启，AI将以语音回复</p>
-          )}
-          {form.voiceMode === 'text' && (
-            <p>💬 文字模式，输入文字与AI对话</p>
-          )}
-          {form.voiceMode === null && (
-            <p>请选择演练模式开始配置</p>
-          )}
         </div>
       </div>
-
       <MobileBottomNav />
-    </div>
+    </PageShell>
   );
 }

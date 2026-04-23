@@ -3,10 +3,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, BarChart3, LoaderCircle, Mic, Pause, Play, Send, Volume2, X } from 'lucide-react';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { textToSpeech } from '@/lib/minimax';
-import { SCORING_CONFIG, DialogNode, NODE_ORDER, type ParentType } from '@/types';
+import { DialogNode, NODE_ORDER, type ParentType } from '@/types';
 import RealtimeRoom from './RealtimeRoom';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/field';
+import { Progress } from '@/components/ui/progress';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 
 interface Message {
   id: string;
@@ -48,7 +55,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [currentNode, setCurrentNode] = useState<DialogNode>('开场');
-  const [nodeScore, setNodeScore] = useState<NodeScore | null>(null);
+  const [, setNodeScore] = useState<NodeScore | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [scores, setScores] = useState<NodeScore[]>([]);
@@ -106,11 +113,17 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
           // 加载完整对话历史
           if (data.session.messages && data.session.messages.length > 0) {
-            const loadedMessages: Message[] = data.session.messages.map((m: any) => ({
+            const loadedMessages: Message[] = data.session.messages.map((m: {
+              id: string;
+              role: 'ai' | 'sales';
+              content: string;
+              node: DialogNode;
+              audioUrl?: string;
+            }) => ({
               id: m.id,
-              role: m.role as 'ai' | 'sales',
+              role: m.role,
               content: m.content,
-              node: m.node as DialogNode,
+              node: m.node,
               audioUrl: m.audioUrl,
             }));
             setMessages(loadedMessages);
@@ -412,58 +425,66 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
   // 文字 / 语音模式
   // ============================================================
   return (
-    <div className="flex flex-col h-screen bg-gray-100 safe-area-top">
+    <div className="safe-area-top flex h-screen flex-col bg-[var(--color-bg)]">
       {/* 顶部栏 */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between shrink-0">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-soft)] bg-white/88 px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <Link href="/practice/new" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200">
-            <span className="text-gray-600 text-xl">←</span>
+          <Link href="/practice/new" className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-fill-soft)]">
+            <ArrowLeft className="h-4 w-4" />
           </Link>
+          <div className="hidden sm:block">
+            <div className="text-sm font-semibold text-[var(--color-text)]">AI 陪练会话</div>
+            <div className="mt-1">
+              <Badge variant="brand">{currentNode}</Badge>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* 模式切换 */}
-          <div className="flex bg-gray-100 rounded-lg p-0.5">
-            {(['text', 'voice'] as Mode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  mode === m ? 'bg-white shadow text-blue-600' : 'text-gray-500'
-                }`}
-              >
-                {m === 'text' ? '💬' : m === 'voice' ? '🎤' : '📞'}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => setShowScorePanel(!showScorePanel)} className={`px-3 py-2 rounded-lg text-sm transition-colors ${showScorePanel ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
-            📊
-          </button>
-          <button
-            onClick={handleEnd}
-            disabled={isEnding}
-            className={`px-3 py-2 text-white text-sm rounded-lg transition-colors flex items-center gap-1.5 ${isEnding ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 active:bg-red-600'}`}
-          >
-            {isEnding && (
-              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            )}
+          <SegmentedControl
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'text', label: '文字' },
+              { value: 'voice', label: '语音' },
+            ]}
+            className="inline-flex"
+          />
+          <Button variant={showScorePanel ? 'secondary' : 'ghost'} size="sm" onClick={() => setShowScorePanel(!showScorePanel)}>
+            <BarChart3 className="h-4 w-4" />
+          </Button>
+          <Button onClick={handleEnd} disabled={isEnding} variant="danger" size="sm">
+            {isEnding ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}
             {isEnding ? '结束中' : '结束'}
-          </button>
+          </Button>
+        </div>
+      </div>
+
+      <div className="border-b border-[var(--color-border-soft)] bg-white px-4 py-3">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-2 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+            <span>当前节点：{currentNode}</span>
+            <span>
+              {currentNodeIndex + 1} / {NODE_ORDER.length}
+            </span>
+          </div>
+          <Progress value={progress} />
         </div>
       </div>
 
       {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 hide-scrollbar">
+      <div className="hide-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'sales' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl ${msg.role === 'sales' ? 'bg-blue-500 text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'}`}>
-              <div className="text-xs opacity-70 mb-1 flex items-center gap-2">
+            <div className={`max-w-[85%] rounded-[22px] px-4 py-3 ${msg.role === 'sales' ? 'rounded-br-sm bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] text-white shadow-[var(--shadow-button)]' : 'rounded-bl-sm border border-[var(--color-border-soft)] bg-white text-[var(--color-text)] shadow-[var(--shadow-card)]'}`}>
+              <div className="mb-1 flex items-center gap-2 text-xs opacity-70">
                 <span>{msg.role === 'sales' ? '你' : 'AI'}</span>
                 {msg.role === 'ai' && msg.audioUrl && mode === 'voice' && (
                   <button
                     onClick={() => handlePlayAudio(msg.id, msg.audioUrl!)}
-                    className={`px-2 py-0.5 rounded text-xs ${playingAudioId === msg.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}
+                    className={`rounded-full px-2 py-0.5 text-xs ${playingAudioId === msg.id ? 'bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]' : 'bg-[var(--color-fill-soft)] text-[var(--color-text-secondary)]'}`}
                   >
-                    {playingAudioId === msg.id && voice.isPlaying ? '⏸' : '▶'}
+                    {playingAudioId === msg.id && voice.isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                   </button>
                 )}
               </div>
@@ -474,7 +495,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
+            <div className="rounded-[22px] rounded-bl-sm border border-[var(--color-border-soft)] bg-white px-4 py-3 shadow-[var(--shadow-card)]">
               <div className="flex gap-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
@@ -486,7 +507,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
         {isVoiceTranscribing && (
           <div className="flex justify-end">
-            <div className="bg-blue-500 px-4 py-3 rounded-2xl rounded-br-sm shadow-sm">
+            <div className="rounded-[22px] rounded-br-sm bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] px-4 py-3 shadow-[var(--shadow-button)]">
               <div className="flex gap-1">
                 <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce" />
                 <div className="w-2 h-2 bg-white/90 rounded-full animate-bounce delay-100" />
@@ -498,8 +519,8 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
         {aiSpeaking && (
           <div className="flex justify-start">
-            <div className="bg-blue-50 px-4 py-2 rounded-full text-blue-600 text-sm flex items-center gap-2">
-              <span className="animate-pulse">🔊</span>
+            <div className="flex items-center gap-2 rounded-full bg-[var(--color-brand-soft)] px-4 py-2 text-sm text-[var(--color-brand-strong)]">
+              <Volume2 className="h-4 w-4 animate-pulse" />
               AI正在说话...
             </div>
           </div>
@@ -509,63 +530,60 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
       </div>
 
       {voice.error && (
-        <div className="mx-4 mb-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+        <div className="mx-4 mb-2 rounded-[var(--radius-lg)] border border-[rgba(239,68,68,0.16)] bg-[var(--color-danger-soft)] px-4 py-2 text-sm text-[var(--color-danger)]">
           {voice.error}
         </div>
       )}
       {voiceTranscribeHint && (
-        <div className="mx-4 mb-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+        <div className="mx-4 mb-2 rounded-[var(--radius-lg)] border border-[rgba(245,158,11,0.18)] bg-[var(--color-warning-soft)] px-4 py-2 text-sm text-[var(--color-warning-strong)]">
           {voiceTranscribeHint}
         </div>
       )}
 
       {/* 输入区域 */}
-      <div className="bg-white border-t p-4 shrink-0">
+      <div className="shrink-0 border-t border-[var(--color-border-soft)] bg-white/92 p-4 backdrop-blur-xl">
         {mode === 'voice' ? (
           <div className="flex flex-col items-center gap-3">
-            <button
+            <Button
               onClick={handleVoiceButton}
               disabled={isLoading || isFinished || isVoiceTranscribing}
-              className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all active:scale-95 ${
+              className={`h-20 w-20 rounded-full text-white ${
                 voice.isRecording
-                  ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200'
-                  : 'bg-blue-500 text-white active:bg-blue-600'
+                  ? 'bg-[var(--color-danger)] shadow-[0_24px_40px_-24px_rgba(239,68,68,0.6)]'
+                  : ''
               } ${isLoading || isFinished || isVoiceTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {voice.isRecording ? '⏹' : '🎤'}
-            </button>
+              {voice.isRecording ? <Pause className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
+            </Button>
             {voice.isRecording && (
               <div className="text-center">
-                <div className="text-red-500 font-medium animate-pulse text-sm">录音中... {formatDuration(voice.duration)}</div>
-                <div className="text-gray-500 text-xs mt-1">说完停顿约 1.5 秒将自动转文字并发送，也可点击停止立即发送</div>
+                <div className="text-sm font-medium text-[var(--color-danger)]">录音中... {formatDuration(voice.duration)}</div>
+                <div className="mt-1 text-xs text-[var(--color-text-secondary)]">说完停顿约 1.5 秒将自动转文字并发送，也可点击停止立即发送</div>
               </div>
             )}
             {!voice.isRecording && !isLoading && !isVoiceTranscribing && (
-              <div className="text-gray-500 text-sm text-center px-2">点击麦克风说话，停顿后自动发送</div>
+              <div className="px-2 text-center text-sm text-[var(--color-text-secondary)]">点击麦克风说话，停顿后自动发送</div>
             )}
             {isVoiceTranscribing && (
-              <div className="text-gray-500 text-sm text-center px-2">正在识别语音...</div>
+              <div className="px-2 text-center text-sm text-[var(--color-text-secondary)]">正在识别语音...</div>
             )}
           </div>
         ) : (
           <div className="flex gap-2">
-            <input
+            <Input
               ref={inputRef}
               type="text"
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
               placeholder="输入你的回复..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+              className="flex-1"
               disabled={isLoading || isFinished}
             />
-            <button
-              onClick={() => handleSend()}
-              disabled={!inputText.trim() || isLoading || isFinished}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium active:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
+            <Button onClick={() => handleSend()} disabled={!inputText.trim() || isLoading || isFinished} className="px-5">
+              <Send className="h-4 w-4" />
               发送
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -573,39 +591,41 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
       {/* 评分面板 - 显示历史对话总结评分 */}
       {showScorePanel && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowScorePanel(false)} />
-          <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl z-50 max-h-[70vh] overflow-y-auto safe-area-bottom">
-            <div className="sticky top-0 bg-white px-4 py-3 border-b flex items-center justify-between">
-              <h3 className="font-semibold text-lg">对话评分总结</h3>
-              <button onClick={() => setShowScorePanel(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">✕</button>
+          <div className="fixed inset-0 z-40 bg-[rgba(15,23,42,0.4)]" onClick={() => setShowScorePanel(false)} />
+          <div className="safe-area-bottom fixed inset-x-0 bottom-0 z-50 max-h-[70vh] overflow-y-auto rounded-t-[28px] border border-white/70 bg-white">
+            <div className="sticky top-0 flex items-center justify-between border-b border-[var(--color-border-soft)] bg-white/96 px-4 py-3 backdrop-blur-xl">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">对话评分总结</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowScorePanel(false)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
             <div className="p-4">
               {/* 综合评分展示 */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4">
+              <div className="mb-4 rounded-[20px] bg-[linear-gradient(135deg,rgba(238,235,255,0.95),rgba(232,241,255,0.95))] p-4">
                 <div className="text-center">
-                  <div className="text-sm text-gray-500 mb-1">综合评分</div>
-                  <div className="text-4xl font-bold text-blue-600">
+                  <div className="mb-1 text-sm text-[var(--color-text-secondary)]">综合评分</div>
+                  <div className="text-4xl font-bold text-[var(--color-brand-strong)]">
                     {scores.length > 0 
                       ? Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length)
                       : '--'
                     }
-                    <span className="text-lg text-gray-400">/15</span>
+                    <span className="text-lg text-[var(--color-text-muted)]">/15</span>
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">共 {scores.length} 次评价</div>
+                  <div className="mt-1 text-sm text-[var(--color-text-secondary)]">共 {scores.length} 次评价</div>
                 </div>
               </div>
 
               {/* 最佳/最差表现 */}
               {scores.length > 0 && (
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <div className="text-xs text-green-600 mb-1">最佳表现</div>
+                  <div className="rounded-[18px] bg-[var(--color-success-soft)] p-3">
+                    <div className="mb-1 text-xs text-[var(--color-success-strong)]">最佳表现</div>
                     <div className="text-lg font-bold text-green-700">
                       {Math.max(...scores.map(s => s.score))}分
                     </div>
                   </div>
-                  <div className="bg-red-50 rounded-lg p-3">
-                    <div className="text-xs text-red-600 mb-1">最差表现</div>
+                  <div className="rounded-[18px] bg-[var(--color-danger-soft)] p-3">
+                    <div className="mb-1 text-xs text-[var(--color-danger-strong)]">最差表现</div>
                     <div className="text-lg font-bold text-red-700">
                       {Math.min(...scores.map(s => s.score))}分
                     </div>
@@ -615,18 +635,18 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
 
               {/* 最近一次评分详情 */}
               {scores.length > 0 && scores[scores.length - 1] && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">最近评价</span>
-                    <span className="text-lg font-bold text-blue-600">
+                <div className="mb-4 rounded-[18px] bg-[var(--color-fill-soft)] p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--color-text)]">最近评价</span>
+                    <span className="text-lg font-bold text-[var(--color-brand-strong)]">
                       {scores[scores.length - 1].score}/{scores[scores.length - 1].maxScore}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">{scores[scores.length - 1].feedback}</p>
+                  <p className="mb-2 text-sm text-[var(--color-text-secondary)]">{scores[scores.length - 1].feedback}</p>
                   {scores[scores.length - 1].suggestions.length > 0 && (
                     <div className="mt-3">
-                      <div className="text-xs text-gray-500 mb-1">改进建议：</div>
-                      <ul className="text-xs text-gray-600 space-y-1">
+                      <div className="mb-1 text-xs text-[var(--color-text-muted)]">改进建议：</div>
+                      <ul className="space-y-1 text-xs text-[var(--color-text-secondary)]">
                         {scores[scores.length - 1].suggestions.map((s, i) => <li key={i}>• {s}</li>)}
                       </ul>
                     </div>
@@ -637,10 +657,10 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
               {/* 所有改进建议 */}
               {scores.length > 0 && (
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-2">全部改进建议</div>
+                  <div className="mb-2 text-sm font-medium text-[var(--color-text)]">全部改进建议</div>
                   <div className="space-y-2">
                     {Array.from(new Set(scores.flatMap(s => s.suggestions))).slice(0, 5).map((suggestion, i) => (
-                      <div key={i} className="text-xs text-gray-600 bg-yellow-50 rounded-lg px-3 py-2">
+                      <div key={i} className="rounded-[16px] bg-[var(--color-warning-soft)] px-3 py-2 text-xs text-[var(--color-warning-strong)]">
                         • {suggestion}
                       </div>
                     ))}
@@ -649,7 +669,7 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
               )}
 
               {scores.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="py-8 text-center text-[var(--color-text-secondary)]">
                   暂无评分数据，继续对话后会自动评分
                 </div>
               )}
@@ -657,41 +677,29 @@ export default function PracticeSessionPage({ params }: { params: Promise<{ id: 
           </div>
         </>
       )}
-
-      {/* 10 轮对话结束确认弹窗 */}
-      {showEndConfirmDialog && (
-        <>
-          <div className="fixed inset-0 bg-black/50 z-50" />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white rounded-2xl z-50 shadow-xl overflow-hidden">
-            <div className="px-5 pt-6 pb-2 text-center">
-              <div className="text-3xl mb-3">💬</div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-1">已进行 {MAX_SHOW_END_CONFIRM_DIALOG_COUNT} 轮对话</h3>
-              <p className="text-sm text-gray-500">本次沟通是否已经结束？</p>
-            </div>
-            <div className="p-4 space-y-2">
-              <button
-                onClick={() => {
-                  setShowEndConfirmDialog(false);
-                  handleEnd();
-                }}
-                disabled={isEnding}
-                className={`w-full py-3 text-white rounded-xl font-medium text-base flex items-center justify-center gap-2 ${isEnding ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 active:bg-blue-700'}`}
-              >
-                {isEnding && (
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                )}
-                {isEnding ? '正在结束...' : '已结束，查看评分报告'}
-              </button>
-              <button
-                onClick={() => setShowEndConfirmDialog(false)}
-                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium text-base active:bg-gray-200"
-              >
-                还没结束，继续对话
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <Dialog
+        open={showEndConfirmDialog}
+        onClose={() => setShowEndConfirmDialog(false)}
+        title={`已进行 ${MAX_SHOW_END_CONFIRM_DIALOG_COUNT} 轮对话`}
+        description="本次沟通是否已经结束？"
+        footer={
+          <>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                setShowEndConfirmDialog(false);
+                handleEnd();
+              }}
+              disabled={isEnding}
+            >
+              {isEnding ? '正在结束...' : '已结束，查看评分报告'}
+            </Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setShowEndConfirmDialog(false)}>
+              继续对话
+            </Button>
+          </>
+        }
+      />
     </div>
   );
 }

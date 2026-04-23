@@ -3,7 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, ChevronRight, FileBadge2, Lightbulb, LoaderCircle, RotateCcw, TrendingUp } from 'lucide-react';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { PageShell } from '@/components/ui/page-shell';
 
 interface DimensionScore {
   name: string;
@@ -60,14 +66,13 @@ export default function ReportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-5 px-8">
-        <div className="relative w-16 h-16">
-          <div className="absolute inset-0 rounded-full border-4 border-blue-100" />
-          <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[var(--color-bg)] px-8">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)]">
+          <LoaderCircle className="h-7 w-7 animate-spin text-[var(--color-brand-strong)]" />
         </div>
         <div className="text-center">
-          <p className="text-gray-700 font-medium text-base">正在生成评分报告</p>
-          <p className="text-gray-400 text-sm mt-1">AI 正在分析本次对话，请稍候...</p>
+          <p className="text-base font-medium text-[var(--color-text)]">正在生成评分报告</p>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">AI 正在分析本次对话，请稍候...</p>
         </div>
       </div>
     );
@@ -75,8 +80,8 @@ export default function ReportPage() {
 
   if (!report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">报告不存在</div>
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)]">
+        <div className="text-[var(--color-text-secondary)]">报告不存在</div>
       </div>
     );
   }
@@ -84,130 +89,115 @@ export default function ReportPage() {
   const percentage = Math.round((report.totalScore / 100) * 100);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
-      <div className="max-w-2xl mx-auto">
-        {/* 返回按钮 */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link
-            href="/"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm hover:shadow-md active:bg-gray-100"
-          >
-            <span className="text-gray-600">←</span>
+    <PageShell>
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] transition hover:text-[var(--color-brand-strong)]">
+            <ArrowLeft className="h-4 w-4" />
+            返回首页
           </Link>
-          <span className="text-gray-500 text-sm">返回首页</span>
-        </div>
-        {/* 头部 */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">演练报告</h1>
-          <p className="text-gray-500">完整分析 · 针对性提升</p>
         </div>
 
-        {/* 总分卡片 */}
-        <div className="bg-white rounded-2xl shadow-sm p-8 mb-6 text-center">
-          <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-blue-50 mb-4">
-            <div>
-              <div className="text-4xl font-bold text-blue-600">{report.totalScore}</div>
-              <div className="text-sm text-gray-500">/100分</div>
-            </div>
-          </div>
-          <div className={`text-2xl font-bold mb-2 ${
-            report.grade.startsWith('A') ? 'text-green-600' :
-            report.grade.startsWith('B') ? 'text-blue-600' :
-            report.grade.startsWith('C') ? 'text-yellow-600' : 'text-red-600'
-          }`}>
-            等级：{report.grade}
-          </div>
-          <div className="text-gray-500">{percentage}%得分率</div>
+        <div className="mb-8 text-center">
+          <Badge variant="brand" className="mb-4">完整分析 · 针对性提升</Badge>
+          <h1 className="text-3xl font-semibold text-[var(--color-text)] md:text-4xl">演练报告</h1>
         </div>
 
-        {/* 亮点与不足 */}
-        {report.highlight && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <span className="text-green-600 text-xl">✨</span>
+        <Card className="mb-6 overflow-hidden">
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-5 flex h-32 w-32 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(238,235,255,0.95),rgba(232,241,255,0.95))]">
               <div>
-                <div className="font-medium text-green-800 mb-1">亮点</div>
-                <div className="text-green-700">{report.highlight}</div>
+                <div className="text-4xl font-semibold text-[var(--color-brand-strong)]">{report.totalScore}</div>
+                <div className="text-sm text-[var(--color-text-muted)]">/100 分</div>
               </div>
             </div>
-          </div>
-        )}
+            <div className="mb-2 text-2xl font-semibold text-[var(--color-text)]">等级：{report.grade}</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">{percentage}% 得分率</div>
+          </CardContent>
+        </Card>
 
-        {report.weakness && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <span className="text-orange-600 text-xl">📍</span>
-              <div>
-                <div className="font-medium text-orange-800 mb-1">薄弱点</div>
-                <div className="text-orange-700">{report.weakness}</div>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          {report.highlight ? (
+            <Card className="border-[rgba(16,185,129,0.16)] bg-[var(--color-success-soft)]">
+              <CardContent className="flex gap-3 p-5">
+                <Lightbulb className="mt-0.5 h-5 w-5 text-[var(--color-success-strong)]" />
+                <div>
+                  <div className="font-semibold text-[var(--color-success-strong)]">亮点</div>
+                  <p className="mt-1 text-sm leading-6 text-[var(--color-success-strong)]">{report.highlight}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+          {report.weakness ? (
+            <Card className="border-[rgba(245,158,11,0.18)] bg-[var(--color-warning-soft)]">
+              <CardContent className="flex gap-3 p-5">
+                <FileBadge2 className="mt-0.5 h-5 w-5 text-[var(--color-warning-strong)]" />
+                <div>
+                  <div className="font-semibold text-[var(--color-warning-strong)]">薄弱点</div>
+                  <p className="mt-1 text-sm leading-6 text-[var(--color-warning-strong)]">{report.weakness}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
 
-        {/* 各维度详情 */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">各维度得分</h2>
-          <div className="space-y-4">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>各维度得分</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
             {report.dimensions.map(dim => {
               const pct = Math.round((dim.score / dim.max) * 100);
               return (
-                <div key={dim.name}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{dim.name}</span>
-                    <span className="text-gray-500">
-                      {dim.score} <span className="text-gray-400">/ {dim.max}分</span>
-                    </span>
+                <div key={dim.name} className="rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] p-4">
+                  <div className="mb-2 flex items-center justify-between gap-4">
+                    <div className="font-medium text-[var(--color-text)]">{dim.name}</div>
+                    <div className="text-sm text-[var(--color-text-secondary)]">
+                      {dim.score} <span className="text-[var(--color-text-muted)]">/ {dim.max}分</span>
+                    </div>
                   </div>
-                  <div className="bg-gray-200 rounded-full h-2 mb-2">
-                    <div
-                      className={`h-2 rounded-full transition-all ${
-                        pct >= 80 ? 'bg-green-500' :
-                        pct >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-500">{dim.detail}</p>
+                  <Progress
+                    value={pct}
+                    indicatorClassName={
+                      pct >= 80
+                        ? 'bg-[var(--color-success)]'
+                        : pct >= 60
+                          ? 'bg-[var(--color-warning)]'
+                          : 'bg-[var(--color-danger)]'
+                    }
+                  />
+                  <p className="mt-3 text-sm leading-6 text-[var(--color-text-secondary)]">{dim.detail}</p>
                 </div>
               );
             })}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* 改进建议 */}
-        {report.improvements.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">改进建议</h2>
-            <ul className="space-y-2">
+        {report.improvements.length > 0 ? (
+          <Card className="mb-6">
+            <CardContent className="space-y-3">
               {report.improvements.map((item, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-1">•</span>
-                  <span className="text-gray-700">{item}</span>
-                </li>
+                <div key={i} className="flex items-start gap-3 rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">
+                  <ChevronRight className="mt-0.5 h-4 w-4 text-[var(--color-brand-strong)]" />
+                  <span className="text-sm leading-6 text-[var(--color-text-secondary)]">{item}</span>
+                </div>
               ))}
-            </ul>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        ) : null}
 
-        {/* 操作按钮 */}
-        <div className="flex gap-4">
-          <button
-            onClick={() => router.push('/practice/new')}
-            className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-semibold active:bg-blue-700"
-          >
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button className="flex-1" size="lg" onClick={() => router.push('/practice/new')}>
+            <RotateCcw className="h-4 w-4" />
             再来一次
-          </button>
-          <button
-            onClick={() => router.push('/history')}
-            className="flex-1 py-4 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold active:bg-gray-50"
-          >
+          </Button>
+          <Button variant="secondary" className="flex-1" size="lg" onClick={() => router.push('/history')}>
+            <TrendingUp className="h-4 w-4" />
             查看历史
-          </button>
+          </Button>
         </div>
       </div>
-
       <MobileBottomNav />
-    </div>
+    </PageShell>
   );
 }

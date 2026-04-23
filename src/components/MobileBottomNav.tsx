@@ -2,9 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BookOpen, House, History, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const active = 'text-blue-600';
-const inactive = 'text-gray-500';
+const navItems = [
+  { href: '/', label: '首页', icon: House, match: (pathname: string) => pathname === '/' },
+  { href: '/training', label: '培训', icon: BookOpen, match: (pathname: string) => pathname.startsWith('/training') },
+  { href: '/practice/new', label: '演练', icon: Sparkles, match: (pathname: string) => pathname.startsWith('/practice') },
+  { href: '/history', label: '历史', icon: History, match: (pathname: string) => pathname.startsWith('/history') },
+] as const;
 
 /**
  * 与首页一致的移动端底栏：首页 · 培训 · 演练 · 历史
@@ -12,30 +18,36 @@ const inactive = 'text-gray-500';
 export default function MobileBottomNav() {
   const pathname = usePathname() || '';
 
-  const isHome = pathname === '/';
-  const isTraining = pathname.startsWith('/training');
-  const isPractice = pathname.startsWith('/practice');
-  const isHistory = pathname.startsWith('/history');
-
   return (
     <div className="mobile-nav">
-      <div className="flex justify-around py-3">
-        <Link href="/" className={`flex flex-col items-center gap-1 ${isHome ? active : inactive}`}>
-          <span className="text-xl">🏠</span>
-          <span className="text-xs">首页</span>
-        </Link>
-        <Link href="/training" className={`flex flex-col items-center gap-1 ${isTraining ? active : inactive}`}>
-          <span className="text-xl">📖</span>
-          <span className="text-xs">培训</span>
-        </Link>
-        <Link href="/practice/new" className={`flex flex-col items-center gap-1 ${isPractice ? active : inactive}`}>
-          <span className="text-xl">🎯</span>
-          <span className="text-xs">演练</span>
-        </Link>
-        <Link href="/history" className={`flex flex-col items-center gap-1 ${isHistory ? active : inactive}`}>
-          <span className="text-xl">📝</span>
-          <span className="text-xs">演练历史</span>
-        </Link>
+      <div className="mx-auto flex max-w-3xl items-center justify-around px-3 py-3">
+        {navItems.map(item => {
+          const active = item.match(pathname);
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex min-w-[64px] flex-col items-center gap-1.5 rounded-2xl px-3 py-1.5 text-xs font-medium transition-all',
+                active ? 'text-[var(--color-brand-strong)]' : 'text-[var(--color-text-muted)]'
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-2xl transition-all',
+                  active
+                    ? 'bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] text-white shadow-[var(--shadow-button)]'
+                    : 'bg-[var(--color-fill-soft)] text-[var(--color-text-secondary)]'
+                )}
+              >
+                <Icon className="h-4.5 w-4.5" strokeWidth={2} />
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

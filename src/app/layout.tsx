@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className="bg-gray-50">
+      <body className="bg-[var(--color-bg)] text-[var(--color-text)] antialiased">
         {/* 仅在邀约场景模拟（/practice）流程下显示头部 */}
         <NavBar />
         {children}

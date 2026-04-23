@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { CalendarClock, ChevronRight, History, Sparkles } from 'lucide-react';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/ui/page-shell';
 
 interface SessionItem {
   id: string;
@@ -47,81 +52,98 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-28">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">历史记录</h1>
-            <p className="text-gray-500 mt-1">查看过往演练成绩</p>
-          </div>
-          <button
-            onClick={() => router.push('/practice/new')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700"
-          >
-            新建演练
-          </button>
-        </div>
+    <PageShell>
+      <div className="mx-auto max-w-4xl">
+        <PageHeader
+          title="历史记录"
+          description="查看过往演练成绩与当前会话状态，列表维持轻边框和低干扰视觉。"
+          action={
+            <Button onClick={() => router.push('/practice/new')}>
+              <Sparkles className="h-4 w-4" />
+              新建演练
+            </Button>
+          }
+        />
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500">加载中...</div>
+          <Card>
+            <CardContent className="py-14 text-center text-sm text-[var(--color-text-secondary)]">
+              正在加载历史记录...
+            </CardContent>
+          </Card>
         ) : sessions.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-            <div className="text-4xl mb-4">📝</div>
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">暂无历史记录</h2>
-            <p className="text-gray-500 mb-4">开始你的第一次演练吧</p>
-            <button
-              onClick={() => router.push('/practice/new')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700"
-            >
-              立即开始
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {sessions.map(session => (
-              <div
-                key={session.id}
-                className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => router.push(`/practice/${session.id}`)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-lg">
-                      {session.customerType}
-                    </div>
-                    <div className="text-gray-500 text-sm mt-1">
-                      {session.customerScore} · {formatDate(session.startedAt)}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-2xl font-bold ${
-                      session.totalScore 
-                        ? session.totalScore >= 80 
-                          ? 'text-green-600' 
-                          : session.totalScore >= 60 
-                            ? 'text-yellow-600' 
-                            : 'text-red-600'
-                        : 'text-gray-400'
-                    }`}>
-                      {session.totalScore ?? '--'}
-                      {session.totalScore && <span className="text-sm font-normal">分</span>}
-                    </div>
-                    <div className={`text-xs px-2 py-0.5 rounded-full ${
-                      session.status === 'finished'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {session.status === 'finished' ? '已完成' : '进行中'}
-                    </div>
-                  </div>
-                </div>
+          <Card>
+            <CardContent className="flex flex-col items-center py-14 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[20px] bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
+                <History className="h-6 w-6" />
               </div>
-            ))}
-          </div>
+              <h2 className="text-xl font-semibold text-[var(--color-text)]">暂无历史记录</h2>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-secondary)]">
+                开始你的第一次演练后，这里会自动沉淀会话记录与评分结果。
+              </p>
+              <Button className="mt-6" onClick={() => router.push('/practice/new')}>
+                立即开始
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-[var(--color-border-soft)] pb-5">
+              <CardTitle>会话列表</CardTitle>
+              <CardDescription>共 {sessions.length} 条记录</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-[var(--color-border-soft)]">
+                {sessions.map(session => {
+                  const scoreColor =
+                    session.totalScore == null
+                      ? 'text-[var(--color-text-muted)]'
+                      : session.totalScore >= 80
+                        ? 'text-[var(--color-success)]'
+                        : session.totalScore >= 60
+                          ? 'text-[var(--color-warning)]'
+                          : 'text-[var(--color-danger)]';
+
+                  return (
+                    <button
+                      key={session.id}
+                      type="button"
+                      className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left transition-colors hover:bg-[var(--color-fill-soft)]"
+                      onClick={() => router.push(`/practice/${session.id}`)}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-[var(--color-text)]">{session.customerType}</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)]">
+                          <span>{session.customerScore}</span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            {formatDate(session.startedAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className={`text-2xl font-semibold ${scoreColor}`}>
+                            {session.totalScore ?? '--'}
+                            {session.totalScore != null ? <span className="ml-1 text-sm font-normal">分</span> : null}
+                          </div>
+                          <div className="mt-2">
+                            <Badge variant={session.status === 'finished' ? 'success' : 'brand'}>
+                              {session.status === 'finished' ? '已完成' : '进行中'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <ChevronRight className="hidden h-4 w-4 text-[var(--color-text-muted)] sm:block" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
-
       <MobileBottomNav />
-    </div>
+    </PageShell>
   );
 }

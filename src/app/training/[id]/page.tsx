@@ -1,14 +1,14 @@
 import { Suspense } from 'react';
+import { LoaderCircle } from 'lucide-react';
 import TrainingSessionContent from './TrainingSessionContent';
 
 function TrainingSessionFallback() {
   return (
-    <div className="flex flex-col h-screen bg-[#f2f3f5] items-center justify-center gap-3 px-4">
-      <div
-        className="h-8 w-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin"
-        aria-hidden
-      />
-      <p className="text-sm text-gray-500">加载中…</p>
+    <div className="flex h-screen flex-col items-center justify-center gap-3 bg-[var(--color-bg)] px-4">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)]">
+        <LoaderCircle className="h-5 w-5 animate-spin text-[var(--color-brand-strong)]" aria-hidden />
+      </div>
+      <p className="text-sm text-[var(--color-text-secondary)]">加载中…</p>
     </div>
   );
 }

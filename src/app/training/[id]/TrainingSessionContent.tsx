@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, Flag, Mic, Square, Type, X } from 'lucide-react';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/field';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 
 interface QuestionResult {
   question: string;
@@ -312,69 +319,56 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
   }, [router]);
 
   return (
-    <div className="flex flex-col h-screen bg-[#f2f3f5]">
+    <div className="flex h-screen flex-col bg-[var(--color-bg)]">
       {/* 顶栏：返回 + 标题 + 更多 */}
-      <header className="shrink-0 bg-white px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 border-b border-gray-100">
-        <div className="flex items-center justify-between gap-2 max-w-lg mx-auto">
+      <header className="shrink-0 border-b border-[var(--color-border-soft)] bg-white/88 px-3 pb-4 pt-[max(0.9rem,env(safe-area-inset-top))] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2">
           <Link
             href="/training"
-            className="w-10 h-10 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 active:bg-gray-200 text-xl"
+            className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-fill-soft)]"
             aria-label="返回"
           >
-            ←
+            <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="flex-1 text-center text-[15px] font-semibold text-gray-900 truncate px-2">
+          <h1 className="flex-1 truncate px-2 text-center text-[15px] font-semibold text-[var(--color-text)]">
             {questionTypeLabel}
           </h1>
-          <button
-            type="button"
-            onClick={openEndConfirm}
-            disabled={!canEndPractice}
-            className="shrink-0 min-h-9 px-3 py-1.5 text-[13px] font-semibold rounded-lg border border-sky-500 bg-sky-500 text-white shadow-sm hover:bg-sky-600 hover:border-sky-600 active:scale-[0.98] transition-all disabled:border-gray-300 disabled:bg-gray-300 disabled:text-gray-600 disabled:shadow-none disabled:cursor-not-allowed disabled:hover:bg-gray-300 disabled:hover:border-gray-300 disabled:active:scale-100"
-          >
+          <Button size="sm" onClick={openEndConfirm} disabled={!canEndPractice} className="shrink-0">
             结束
-          </button>
+          </Button>
         </div>
 
-        {/* 绿色进度条 + 旗标 + 共 N 题 */}
-        <div className="max-w-lg mx-auto mt-3 flex items-center gap-3">
-          <div className="flex-1 min-w-0 relative h-2 rounded-full bg-gray-200/90">
-            <div
-              className="absolute left-0 top-0 h-2 rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
-              style={{ width: `${progressPercent}%`, minWidth: progressPercent > 0 ? '4px' : undefined }}
-            />
+        <div className="mx-auto mt-4 flex max-w-2xl items-center gap-3">
+          <div className="relative min-w-0 flex-1">
+            <Progress value={progressPercent} indicatorClassName="bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))]" />
             {progressPercent > 0 ? (
-              <div
-                className="absolute z-[1] top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none"
+              <span
+                className="pointer-events-none absolute top-1/2 z-[1] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] text-white shadow-[var(--shadow-button)]"
                 style={{ left: `clamp(8px, ${progressPercent}%, calc(100% - 8px))` }}
               >
-                <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-emerald-500 text-white shadow-sm shadow-emerald-500/40">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-3 h-3" fill="currentColor">
-                    <path d="M4 2v16l6-4 6 4V2H4z" />
-                  </svg>
-                </span>
-              </div>
+                <Flag className="h-3 w-3" />
+              </span>
             ) : null}
           </div>
-          <p className="shrink-0 text-xs text-gray-600 tabular-nums">
-            共 <span className="font-bold text-emerald-600">{isFinished ? totalQuestions || answeredCount : totalQuestions || '—'}</span> 题
+          <p className="shrink-0 text-xs tabular-nums text-[var(--color-text-secondary)]">
+            共 <span className="font-bold text-[var(--color-brand-strong)]">{isFinished ? totalQuestions || answeredCount : totalQuestions || '—'}</span> 题
           </p>
         </div>
-        <p className="max-w-lg mx-auto mt-1.5 text-[11px] text-gray-400 text-center">
+        <p className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-[var(--color-text-muted)]">
           {isFinished ? (
             endedByUser && answeredCount < totalQuestions ? (
               <>
-                已提前结束 · 已答 <span className="font-bold text-emerald-600">{answeredCount}</span> / {totalQuestions} 题 · 进度{' '}
-                <span className="font-bold text-emerald-600">{progressPercent}%</span>
+                已提前结束 · 已答 <span className="font-bold text-[var(--color-brand-strong)]">{answeredCount}</span> / {totalQuestions} 题 · 进度{' '}
+                <span className="font-bold text-[var(--color-brand-strong)]">{progressPercent}%</span>
               </>
             ) : (
               <>
-                已完成 · <span className="font-bold text-emerald-600">100%</span>
+                已完成 · <span className="font-bold text-[var(--color-brand-strong)]">100%</span>
               </>
             )
           ) : (
             <>
-              进度 <span className="font-bold text-emerald-600">{progressPercent}%</span>
+              进度 <span className="font-bold text-[var(--color-brand-strong)]">{progressPercent}%</span>
               {totalQuestions > 0 ? ` · 第 ${askedCount} / ${totalQuestions} 题` : ''}
             </>
           )}
@@ -382,82 +376,78 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
       </header>
 
       {/* 可滚动：题干 + 作答区 + 参考答案 */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4 pb-32 max-w-lg mx-auto w-full space-y-4">
+      <div className="mx-auto flex-1 min-h-0 w-full max-w-2xl space-y-4 overflow-y-auto px-3 py-5 pb-32">
         {isFinished ? (
-          <div className="rounded-2xl bg-white border border-emerald-100 shadow-sm px-4 py-6 text-center">
-            <p className="font-semibold text-gray-900 text-base mb-1">全部题目已完成</p>
-            <p className="text-sm text-gray-500">点击下方蓝色按钮「去评价」查看培训总结与逐题得分</p>
+          <div className="rounded-[24px] border border-[rgba(124,108,248,0.18)] bg-white px-4 py-6 text-center shadow-[var(--shadow-card)]">
+            <div className="mb-3 flex justify-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
+                <CheckCircle2 className="h-5 w-5" />
+              </span>
+            </div>
+            <p className="mb-1 text-base font-semibold text-[var(--color-text)]">全部题目已完成</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">点击下方按钮查看培训总结与逐题得分</p>
           </div>
         ) : (
           <>
-            <section className="rounded-2xl bg-white shadow-sm border border-gray-100/90 overflow-hidden">
+            <section className="overflow-hidden rounded-[24px] border border-[var(--color-border-soft)] bg-white shadow-[var(--shadow-card)]">
               <div className="px-4 pt-4 pb-3">
-                <span className="inline-block rounded-md bg-violet-500 px-2.5 py-1 text-xs font-medium text-white shadow-sm shadow-violet-500/25">
+                <Badge variant="brand">
                   {questionTypeLabel}
-                </span>
-                <p className="mt-3 text-xs text-gray-400">
+                </Badge>
+                <p className="mt-3 text-xs text-[var(--color-text-muted)]">
                   第 {askedCount} 题{totalQuestions > 0 ? ` / 共 ${totalQuestions} 题` : ''}
                 </p>
-                <div className="mt-2 text-[16px] leading-relaxed text-gray-900 font-normal whitespace-pre-wrap">
+                <div className="mt-2 whitespace-pre-wrap text-[16px] font-normal leading-8 text-[var(--color-text)]">
                   {currentQuestion || '暂无题目'}
                 </div>
               </div>
 
               {/* 作答区：灰底块 + 标题行（参考图「第①问」样式） */}
-              <div className="mx-3 mb-4 rounded-xl bg-gray-100/90 border border-gray-200/60 overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200/50 bg-gray-100">
-                  <span className="text-sm font-medium text-gray-800">你的作答</span>
-                  <div className="flex items-center gap-1 rounded-md border border-gray-200/80 bg-white p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setInputMode('text')}
-                      className={`px-2 py-0.5 text-[11px] rounded ${inputMode === 'text' ? 'bg-gray-100 text-violet-700 font-medium' : 'text-gray-500'}`}
-                    >
-                      文字
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputMode('voice')}
-                      className={`px-2 py-0.5 text-[11px] rounded ${inputMode === 'voice' ? 'bg-gray-100 text-violet-700 font-medium' : 'text-gray-500'}`}
-                    >
-                      语音
-                    </button>
-                  </div>
+              <div className="mx-3 mb-4 overflow-hidden rounded-[20px] border border-[var(--color-border)] bg-[var(--color-fill-soft)]">
+                <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-3">
+                  <span className="text-sm font-medium text-[var(--color-text)]">你的作答</span>
+                  <SegmentedControl
+                    value={inputMode}
+                    onChange={setInputMode}
+                    options={[
+                      { value: 'text', label: '文字', icon: <Type className="h-3.5 w-3.5" /> },
+                      { value: 'voice', label: '语音', icon: <Mic className="h-3.5 w-3.5" /> },
+                    ]}
+                    className="scale-[0.94]"
+                  />
                 </div>
                 {openingMessage ? (
-                  <p className="px-3 py-2.5 text-[13px] text-gray-600 leading-relaxed bg-white/40 border-b border-gray-200/40">
+                  <p className="border-b border-[var(--color-border)] bg-white/70 px-3 py-2.5 text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
                     {openingMessage}
                   </p>
                 ) : null}
-                <textarea
+                <Textarea
                   id="training-answer"
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
                   placeholder="请在此输入答案…"
                   disabled={isLoading}
                   rows={5}
-                  className="w-full px-3 py-3 text-[15px] leading-relaxed text-gray-800 bg-transparent border-0 focus:outline-none focus:ring-0 resize-y min-h-[120px] placeholder:text-gray-400"
+                  className="rounded-none border-0 bg-transparent px-3 py-3 shadow-none focus-visible:ring-0"
                 />
                 {inputMode === 'voice' ? (
-                  <div className="px-3 pb-3 flex flex-col items-center gap-2 border-t border-gray-200/50 bg-white/50">
-                    <p className="text-[11px] text-gray-500 text-center pt-2">
+                  <div className="flex flex-col items-center gap-2 border-t border-[var(--color-border)] bg-white/70 px-3 pb-4">
+                    <p className="pt-3 text-center text-[11px] text-[var(--color-text-secondary)]">
                       {voice.isRecording
                         ? `录音中 ${voice.duration}s（最长${MAX_RECORDING_SECONDS}s）· 再点停止并识别`
                         : isTranscribing
                         ? '识别中…'
                         : '点下方麦克风录音，识别后填入上方'}
                     </p>
-                    {voice.error ? <p className="text-[11px] text-red-500">{voice.error}</p> : null}
-                    <button
-                      type="button"
+                    {voice.error ? <p className="text-[11px] text-[var(--color-danger)]">{voice.error}</p> : null}
+                    <Button
                       onClick={handleVoiceButton}
                       disabled={isLoading || isTranscribing}
-                      className={`w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md disabled:opacity-40 ${
-                        voice.isRecording ? 'bg-red-500 animate-pulse' : 'bg-violet-600'
-                      }`}
+                      className={voice.isRecording ? 'bg-[var(--color-danger)] shadow-[0_14px_28px_-18px_rgba(239,68,68,0.55)]' : ''}
+                      size="icon"
                     >
-                      {voice.isRecording ? '■' : '🎤'}
-                    </button>
+                      {voice.isRecording ? <Square className="h-4 w-4 fill-current" /> : <Mic className="h-4 w-4" />}
+                    </Button>
                   </div>
                 ) : null}
               </div>
@@ -479,73 +469,70 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
         )}
 
         {submitError ? (
-          <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2 border border-red-100">{submitError}</p>
+          <p className="rounded-[var(--radius-lg)] border border-[rgba(239,68,68,0.16)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">{submitError}</p>
         ) : null}
       </div>
 
       {/* 底部固定主按钮（参考图亮蓝大按钮） */}
-      <div className="shrink-0 fixed bottom-0 left-0 right-0 z-30 bg-[#f2f3f5]/95 backdrop-blur-sm border-t border-gray-200/60 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="max-w-lg mx-auto">
-          <button
-            type="button"
+      <div className="fixed bottom-0 left-0 right-0 z-30 shrink-0 border-t border-[var(--color-border-soft)] bg-white/86 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+        <div className="mx-auto max-w-2xl">
+          <Button
             onClick={handlePrimaryClick}
             disabled={isFinished ? false : !canSubmitPrimary}
-            className="w-full py-3.5 rounded-2xl bg-sky-500 text-white text-[16px] font-semibold shadow-lg shadow-sky-500/25 hover:bg-sky-600 active:scale-[0.99] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            size="lg"
+            className="w-full"
           >
-            {isLoading && !isFinished ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : null}
             {primaryButtonLabel}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* 总结弹窗（沿用原有评价展示） */}
       {showSummary && (
         <>
-          <div className="fixed inset-0 bg-black/50 z-40" onClick={closeSummaryAndBackToTraining} />
-          <div className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl z-50 max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white px-4 py-4 border-b flex items-center justify-between rounded-t-3xl">
-              <h3 className="font-bold text-lg">培训总结</h3>
-              <button type="button" onClick={closeSummaryAndBackToTraining} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500">
-                ✕
-              </button>
+          <div className="fixed inset-0 z-40 bg-[rgba(15,23,42,0.42)]" onClick={closeSummaryAndBackToTraining} />
+          <div className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-[28px] border border-white/70 bg-white">
+            <div className="sticky top-0 flex items-center justify-between rounded-t-[28px] border-b border-[var(--color-border-soft)] bg-white/96 px-4 py-4 backdrop-blur-xl">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">培训总结</h3>
+              <Button type="button" variant="ghost" size="icon" onClick={closeSummaryAndBackToTraining}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
 
             <div className="p-5">
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 mb-5 text-center">
-                <p className="text-gray-500 text-sm mb-2">培训总分</p>
+              <div className="mb-5 rounded-[24px] bg-[linear-gradient(135deg,rgba(238,235,255,0.95),rgba(232,241,255,0.95))] p-5 text-center">
+                <p className="mb-2 text-sm text-[var(--color-text-secondary)]">培训总分</p>
                 {endedByUser ? (
-                  <p className="text-xs text-gray-500 mb-2">
-                    按已答 <span className="font-semibold text-gray-700">{finalResults.length}</span> 题计分，满分{' '}
-                    <span className="font-semibold text-gray-700">{totalMax}</span>（每题满分 {RUBRIC_MAX_PER_QUESTION} 分）
+                  <p className="mb-2 text-xs text-[var(--color-text-secondary)]">
+                    按已答 <span className="font-semibold text-[var(--color-text)]">{finalResults.length}</span> 题计分，满分{' '}
+                    <span className="font-semibold text-[var(--color-text)]">{totalMax}</span>（每题满分 {RUBRIC_MAX_PER_QUESTION} 分）
                   </p>
                 ) : null}
-                <div className="flex items-end justify-center gap-1 mb-1">
+                <div className="mb-1 flex items-end justify-center gap-1">
                   <span className={`text-5xl font-bold ${gradeColor}`}>{totalScore}</span>
-                  <span className="text-gray-400 text-lg pb-1">/ {totalMax}</span>
+                  <span className="pb-1 text-lg text-[var(--color-text-muted)]">/ {totalMax}</span>
                 </div>
-                <div className={`inline-block px-4 py-1 rounded-full text-sm font-bold ${gradeColor} bg-white shadow-sm mt-2`}>
+                <div className={`mt-2 inline-block rounded-full bg-white px-4 py-1 text-sm font-bold ${gradeColor} shadow-[var(--shadow-card)]`}>
                   {grade === '—' ? '暂无得分' : `等级 ${grade} · ${scorePercent}%`}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mb-5">
+              <div className="mb-5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-secondary)]">
                 <span className="font-medium text-green-600">9 分</span><span>要点齐全</span>
-                <span className="text-gray-300">·</span>
+                <span className="text-[var(--color-text-muted)]">·</span>
                 <span className="font-medium text-blue-600">7 分</span><span>基本正确</span>
-                <span className="text-gray-300">·</span>
+                <span className="text-[var(--color-text-muted)]">·</span>
                 <span className="font-medium text-yellow-600">5 分</span><span>部分正确</span>
-                <span className="text-gray-300">·</span>
+                <span className="text-[var(--color-text-muted)]">·</span>
                 <span className="font-medium text-red-500">3 分</span><span>偏离要点</span>
               </div>
 
-              <h4 className="font-semibold text-gray-700 mb-3">逐题得分</h4>
-              <div className="space-y-3 mb-5">
+              <h4 className="mb-3 font-semibold text-[var(--color-text)]">逐题得分</h4>
+              <div className="mb-5 space-y-3">
                 {finalResults.map((r, i) => (
-                  <div key={i} className="bg-gray-50 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">第 {i + 1} 题</span>
+                  <div key={i} className="rounded-[20px] bg-[var(--color-fill-soft)] p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium text-[var(--color-text)]">第 {i + 1} 题</span>
                       <div className="flex items-center gap-1">
                         <span
                           className={`font-bold ${
@@ -562,10 +549,10 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
                         >
                           {r.score}
                         </span>
-                        <span className="text-gray-400 text-sm">/ {RUBRIC_MAX_PER_QUESTION}</span>
+                        <span className="text-sm text-[var(--color-text-muted)]">/ {RUBRIC_MAX_PER_QUESTION}</span>
                       </div>
                     </div>
-                    <div className="w-full h-1.5 bg-gray-200 rounded-full">
+                    <div className="h-1.5 w-full rounded-full bg-white">
                       <div
                         className={`h-full rounded-full ${
                           r.score >= 9
@@ -581,13 +568,13 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
                         style={{ width: `${Math.min(100, (r.score / RUBRIC_MAX_PER_QUESTION) * 100)}%` }}
                       />
                     </div>
-                    <div className="mt-2 text-xs text-gray-600">
-                      <p className="font-medium">你的回答：{r.userAnswer}</p>
+                    <div className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                      <p className="font-medium text-[var(--color-text)]">你的回答：{r.userAnswer}</p>
                       {r.standardAnswer ? (
-                        <p className="mt-1 text-indigo-600">参考要点：{r.standardAnswer.replace(/[*#]/g, '')}</p>
+                        <p className="mt-1 text-[var(--color-brand-strong)]">参考要点：{r.standardAnswer.replace(/[*#]/g, '')}</p>
                       ) : null}
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">{r.feedback}</p>
+                    <p className="mt-2 text-xs text-[var(--color-text-secondary)]">{r.feedback}</p>
                   </div>
                 ))}
               </div>
@@ -595,13 +582,13 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
               <div className="flex gap-3">
                 <Link
                   href="/training"
-                  className="flex-1 py-3 border-2 border-indigo-600 text-indigo-600 rounded-xl font-semibold text-center text-sm hover:bg-indigo-50 transition-colors"
+                  className="inline-flex flex-1 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-fill-soft)] px-4 py-3 text-sm font-medium text-[var(--color-text)] transition hover:bg-[var(--color-fill-soft-hover)]"
                 >
                   再次培训
                 </Link>
                 <Link
                   href="/"
-                  className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-semibold text-center text-sm hover:bg-indigo-700 transition-colors"
+                  className="inline-flex flex-1 items-center justify-center rounded-[var(--radius-md)] bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] px-4 py-3 text-sm font-medium text-white shadow-[var(--shadow-button)] transition hover:brightness-[1.03]"
                 >
                   返回首页
                 </Link>
@@ -611,47 +598,22 @@ export default function TrainingSessionContent({ params }: { params: Promise<{ i
         </>
       )}
 
-      {/* 结束练习确认（Ant Design Modal 风格：遮罩 + 居中卡片 + 底部按钮区） */}
-      {endConfirmOpen ? (
-        <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/45"
-            aria-hidden
-            onClick={() => setEndConfirmOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="end-practice-modal-title"
-            className="relative z-[1] w-full max-w-[416px] overflow-hidden rounded-[8px] bg-white text-left shadow-[0_6px_16px_0_rgba(0,0,0,0.08),0_3px_6px_-4px_rgba(0,0,0,0.12),0_9px_28px_8px_rgba(0,0,0,0.05)]"
-          >
-            <div className="px-6 pt-5 pb-4">
-              <h2 id="end-practice-modal-title" className="text-[16px] font-semibold leading-6 text-[rgba(0,0,0,0.88)]">
-                结束练习
-              </h2>
-              <p className="mt-3 text-sm leading-[1.5715] text-[rgba(0,0,0,0.65)]">
-                确定结束练习？将按已答题目统计得分并打开评价；当前题目未提交的答案不会保存。
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-[#f0f0f0] px-6 py-4">
-              <button
-                type="button"
-                onClick={() => setEndConfirmOpen(false)}
-                className="h-8 min-w-[64px] rounded-md border border-[#d9d9d9] bg-white px-[15px] text-sm text-[rgba(0,0,0,0.88)] shadow-[0_2px_0_rgba(0,0,0,0.02)] hover:border-[#4096ff] hover:text-[#4096ff]"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={() => void performEndPractice()}
-                className="h-8 min-w-[64px] rounded-md border border-[#1677ff] bg-[#1677ff] px-[15px] text-sm font-normal text-white shadow-[0_2px_0_rgba(5,145,255,0.1)] hover:border-[#4096ff] hover:bg-[#4096ff]"
-              >
-                确定
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Dialog
+        open={endConfirmOpen}
+        onClose={() => setEndConfirmOpen(false)}
+        title="结束练习"
+        description="确定结束练习？将按已答题目统计得分并打开评价；当前题目未提交的答案不会保存。"
+        footer={
+          <>
+            <Button variant="secondary" className="flex-1" onClick={() => setEndConfirmOpen(false)}>
+              取消
+            </Button>
+            <Button className="flex-1" onClick={() => void performEndPractice()}>
+              确定
+            </Button>
+          </>
+        }
+      />
     </div>
   );
 }

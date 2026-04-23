@@ -1,63 +1,103 @@
 import Link from 'next/link';
+import { ArrowRight, AudioLines, BookOpen, Sparkles } from 'lucide-react';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageShell } from '@/components/ui/page-shell';
 
 export default function Home() {
+  const modules = [
+    {
+      href: '/training',
+      title: '基础知识训练',
+      description: 'AI 考官逐题出题，帮助销售团队快速巩固产品知识与场景理解。',
+      icon: BookOpen,
+      badge: '知识闯关',
+    },
+    {
+      href: '/practice/new',
+      title: '邀约情景模拟',
+      description: '按客户画像与沟通场景配置演练，沉浸式训练成交前关键对话。',
+      icon: Sparkles,
+      badge: '核心工具',
+    },
+    {
+      href: 'http://talking.sqkam2.top:8765/upload',
+      title: '录音分析',
+      description: '上传真实沟通录音，自动生成复盘洞察、亮点总结与跟进建议。',
+      icon: AudioLines,
+      badge: 'AI 复盘',
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-20">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Hero */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
-            AI销售通
-          </h1>
-          <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
-            销售员入门到精通的全方位提升工具 
-            <br className="hidden md:block" />
-            助力销售员自信从容应对各种销售问题
-          </p>
-        </div>
+    <PageShell className="pb-24">
+      <div className="mx-auto max-w-5xl">
+        <section className="bg-grid-soft overflow-hidden rounded-[28px] border border-white/80 bg-[var(--color-surface-muted)] px-6 py-10 shadow-[var(--shadow-card)] md:px-10 md:py-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <Badge variant="brand" className="mb-5">
+              AI Sales Training Suite
+            </Badge>
+            <h1 className="text-4xl font-semibold tracking-tight text-[var(--color-text)] md:text-6xl">
+              AI 销售通
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[var(--color-text-secondary)] md:text-lg">
+              用统一的 AI SaaS 工具体验，完成基础知识训练、邀约对话模拟与录音复盘，
+              帮助销售员更快形成稳定、可复用的高质量表达。
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/practice/new"
+                className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-[var(--radius-md)] bg-[linear-gradient(135deg,var(--color-brand-from),var(--color-brand-to))] px-5 py-3 text-base font-medium text-white shadow-[var(--shadow-button)] transition hover:brightness-[1.03]"
+              >
+                开始 AI 陪练
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/training"
+                className="inline-flex min-w-[180px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-fill-soft)] px-5 py-3 text-base font-medium text-[var(--color-text)] transition hover:bg-[var(--color-fill-soft-hover)]"
+              >
+                进入知识训练
+              </Link>
+            </div>
+          </div>
+        </section>
 
-        {/* 功能卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Link
-            className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow"
-            href="/training"
-          >
-            <div className="text-2xl mb-3">📖</div>
-            <h3 className="font-semibold text-base mb-1">基础知识训练</h3>
-            <p className="text-gray-600 text-sm">
-              入门训练，助力掌握销售基础知识
-            </p>
-          </Link>
-          <Link
-            className="bg-white rounded-2xl shadow-sm p-5"
-            href="/practice/new"
-          >
-            <div className="text-2xl mb-3">🎭</div>
-            <h3 className="font-semibold text-base mb-1">邀约情景模拟</h3>
-            <p className="text-gray-600 text-sm">
-              还原真实邀约情景，训练不同场景下的应对技巧
-            </p>
-          </Link>
-          <Link
-            href='http://talking.sqkam2.top:8765/upload'
-            className="bg-white rounded-2xl shadow-sm p-5"
-          >
-            <div className="text-2xl mb-3">🎤</div>
-            <h3 className="font-semibold text-base mb-1">录音分析</h3>
-            <p className="text-gray-600 text-sm">
-              实现沟通全流程的自动复盘、智能点评与精准跟进
-            </p>
-          </Link>
-        </div>
+        <section className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
+          {modules.map(module => {
+            const Icon = module.icon;
 
-        {/* 技术栈 */}
-        <div className="mt-12 text-center text-gray-500 text-xs">
-          <p>技术栈：Next.js + Tailwind CSS + MiniMax 大模型</p>
+            return (
+              <Link key={module.title} href={module.href} className="group">
+                <Card className="h-full border-[var(--color-border-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-28px_rgba(79,140,255,0.34)]">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <Badge variant="neutral">{module.badge}</Badge>
+                    </div>
+                    <CardTitle className="mt-3 text-xl">{module.title}</CardTitle>
+                    <CardDescription>{module.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-brand-strong)]">
+                      进入模块
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </section>
+
+        <div className="mt-12 text-center text-xs text-[var(--color-text-muted)]">
+          技术栈：Next.js + Tailwind CSS + MiniMax 大模型
         </div>
       </div>
 
       <MobileBottomNav />
-    </div>
+    </PageShell>
   );
 }

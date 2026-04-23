@@ -3,36 +3,33 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, BookOpenCheck, CircleCheck, GraduationCap, MessageSquareQuote } from 'lucide-react';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/ui/page-shell';
+import { cn } from '@/lib/utils';
 
 type QuestionType = 'sales_faq' | 'product_basics';
 
 const QUESTION_TYPES: {
   value: QuestionType;
-  emoji: string;
+  icon: typeof MessageSquareQuote;
   label: string;
   desc: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
 }[] = [
   {
     value: 'sales_faq',
-    emoji: '💬',
+    icon: MessageSquareQuote,
     label: '销售常见问题',
     desc: '测试你对常见销售场景的处理能力',
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-500',
   },
   {
     value: 'product_basics',
-    emoji: '📚',
+    icon: GraduationCap,
     label: '产品基础知识',
     desc: '测试你对机构产品和课程体系的掌握',
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-500',
   },
 ];
 
@@ -73,83 +70,94 @@ export default function TrainingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-8 px-4 pb-28">
-      <div className="max-w-xl mx-auto">
-        {/* 顶部导航 */}
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/60 text-gray-500 hover:text-gray-700 transition-colors">
-            ←
+    <PageShell>
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)] transition hover:text-[var(--color-brand-strong)]">
+            <ArrowLeft className="h-4 w-4" />
+            返回首页
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">基础知识闯关练</h1>
-            <p className="text-gray-500 text-sm">AI 考官出题，即时评分反馈</p>
-          </div>
         </div>
 
-        {/* 说明卡片 */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 flex items-start gap-4">
-          <div className="text-3xl">🎓</div>
-          <div>
-            <h2 className="font-semibold text-gray-800 mb-1">闯关练规则</h2>
-            <ul className="text-sm text-gray-600 space-y-1.5">
-              <li>• 题库题目<span className="font-medium text-indigo-600">随机顺序</span>逐题出完，答完为止</li>
-              <li>• 每道题满分 <span className="font-medium text-indigo-600">10 分</span>，完成所有题目后统一评分</li>
-              <li>• 结束后展示总分、等级（A–E）及每题参考答案</li>
-            </ul>
-          </div>
-        </div>
+        <PageHeader
+          title="基础知识闯关练"
+          description="AI 考官出题，即时评分反馈。单页面聚焦一个任务：选题、开始、完成。"
+        />
 
-        {/* 题型选择 */}
-        <h2 className="text-base font-semibold text-gray-700 mb-3">请选择培训题型</h2>
-        <div className="space-y-4 mb-8">
-          {QUESTION_TYPES.map(type => (
-            <button
-              key={type.value}
-              type="button"
-              onClick={() => setSelected(type.value)}
-              className={`w-full text-left bg-white rounded-2xl p-5 border-2 cursor-pointer transition-all ${
-                selected === type.value
-                  ? `${type.borderColor} shadow-md`
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${type.bgColor} shrink-0`}>
-                  {type.emoji}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className={`font-semibold text-base ${selected === type.value ? type.color : 'text-gray-800'}`}>
-                      {type.label}
-                    </h3>
-                    {selected === type.value && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${type.bgColor} ${type.color}`}>
-                        已选择
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-500 text-sm">{type.desc}</p>
-                </div>
+        <Card className="mb-6">
+          <CardHeader className="flex-row items-start gap-4 pb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
+              <BookOpenCheck className="h-5 w-5" />
+            </div>
+            <div className="space-y-3">
+              <div>
+                <CardTitle>闯关练规则</CardTitle>
+                <CardDescription>不改评分与出题逻辑，仅统一视觉与引导方式。</CardDescription>
               </div>
-            </button>
-          ))}
+              <div className="grid gap-2 text-sm text-[var(--color-text-secondary)] md:grid-cols-3">
+                <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">题库题目随机顺序逐题出完，答完为止</div>
+                <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">每道题满分 10 分，完成后统一评分</div>
+                <div className="rounded-[var(--radius-lg)] bg-[var(--color-fill-soft)] px-4 py-3">结束后展示总分、等级与参考答案</div>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-[var(--color-text)]">请选择培训题型</h2>
+          <Badge variant="brand">2 类训练</Badge>
         </div>
 
-        {/* 开始按钮 */}
-        <button
-          onClick={handleStart}
-          disabled={!selected || isStarting}
-          className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all ${
-            !selected
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-lg shadow-indigo-200'
-          }`}
-        >
-          {isStarting ? '正在启动...' : '开始练习'}
-        </button>
-      </div>
+        <div className="space-y-4">
+          {QUESTION_TYPES.map(type => {
+            const Icon = type.icon;
 
+            return (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => setSelected(type.value)}
+                className={cn(
+                  'w-full rounded-[var(--radius-xl)] border bg-white p-5 text-left transition-all',
+                  selected === type.value
+                    ? 'border-[rgba(124,108,248,0.34)] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(238,235,255,0.56))] shadow-[0_18px_40px_-28px_rgba(97,92,248,0.45)]'
+                    : 'border-[var(--color-border-soft)] hover:border-[var(--color-border)] hover:shadow-[var(--shadow-card)]'
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-[var(--color-fill-soft)] text-[var(--color-brand-strong)]">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-[var(--color-text)]">{type.label}</h3>
+                      {selected === type.value ? (
+                        <Badge variant="brand" className="gap-1">
+                          <CircleCheck className="h-3.5 w-3.5" />
+                          已选择
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{type.desc}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-8">
+          <Button
+            onClick={handleStart}
+            disabled={!selected || isStarting}
+            size="lg"
+            className="w-full"
+          >
+            {isStarting ? '正在启动...' : '开始练习'}
+          </Button>
+        </div>
+      </div>
       <MobileBottomNav />
-    </div>
+    </PageShell>
   );
 }
